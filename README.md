@@ -1,5 +1,7 @@
-scjhat
+SHelmet
 ======
+
+**Please note, this is a work in progress and we have a few more features to implement before packaging and release our first version**
 
 A standalone heap analysis tool, based on JHat (which is packaged with the JDK), rewritten using Scala and modern libraries.
 
@@ -15,7 +17,7 @@ Some issues:
 + Did we mention the memory and the bugs?
 
 Immediate plans
---------
+---------------
 
 + Memory Overflow to disk
 + Modern web engine (Spray/Spray http)
@@ -31,7 +33,8 @@ Installation
 
 SHelmet is packaged as a standalone jar including all of its dependencies so simply download it and use it as below.
 
-TODO - Add link to package release area
+[Download Area](https://github.com/rorygraves/shelmet/releases)
+
 
 Usage
 -----
@@ -44,14 +47,13 @@ and then simply use a web browser to go to http://localhost:8080
 
 If you run on a remote machine simply switch 'localhost' for the machine name or ip address.
 
-You can control
-and brows
-TBC
+You can then explore the heap dump via the web browser page.
 
 Contributing
 ------------
 
 This project is written in scala and built using sbt.
+Pull requests are very welcome!
 
 License
 -------

@@ -6,9 +6,9 @@ class AboutPage(snapshot : Snapshot) extends QueryHandler(snapshot) {
   override def run() {
     html("About SHelmet") {
       out.println(
-       // TODO Find the github address
        // TODO Expand the content here.
-        """| SHelmet is a re-implemention of JHat see the source at: www.github.com""".stripMargin
+        """| SHelmet is a re-implementation of JHat for full information on our github page at:
+           |<a href="https://github.com/rorygraves/shelmet">https://github.com/rorygraves/shelmet</a>""".stripMargin
       )
     }
   }
