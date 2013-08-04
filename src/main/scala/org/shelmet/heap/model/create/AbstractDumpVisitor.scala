@@ -45,7 +45,7 @@ class AbstractDumpVisitor(callStack: Boolean) extends DumpVisitor with Logging {
 
     if(callStack) {
       val frames =  frameIDs.map { fid =>
-        stackFrames.getOrElse(fid,throw new IOException("Stack frame " + toHex(fid) + " not found"))
+        stackFrames.getOrElse(fid,throw new IOException(s"Stack frame ${toHex(fid)} not found"))
       }
 
       stackTraces += (serialNo -> new StackTrace(frames.toVector))
@@ -58,7 +58,7 @@ class AbstractDumpVisitor(callStack: Boolean) extends DumpVisitor with Logging {
 
     val result = stackTraces.get(ser)
     if (result == None)
-      logger.warn(s"Stack trace not found for serial # ${ser}")
+      logger.warn(s"Stack trace not found for serial # $ser")
 
     result
   }
@@ -71,7 +71,7 @@ class AbstractDumpVisitor(callStack: Boolean) extends DumpVisitor with Logging {
       val className = classNameFromSerialNo.getOrElse(classSerialId,null)
 
       val adjLineNo = if (lineNumber < StackFrame.LINE_NUMBER_NATIVE) {
-        logger.warn(s"Weird stack frame line number:  ${lineNumber}")
+        logger.warn(s"Weird stack frame line number:  $lineNumber")
         StackFrame.LINE_NUMBER_UNKNOWN
       } else lineNumber
 

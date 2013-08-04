@@ -3,7 +3,7 @@ package org.shelmet.heap.server
 import org.shelmet.heap.model._
 import org.shelmet.heap.util.Misc
 
-class ObjectPage(snapshot : Snapshot,query : String) extends QueryHandler(snapshot) {
+class ObjectPage(snapshot : Snapshot,query : String) extends AbstractPage(snapshot) {
 
   override def run() {
     findObjectByQuery(query) match {
@@ -230,10 +230,10 @@ class ObjectPage(snapshot : Snapshot,query : String) extends QueryHandler(snapsh
     val id: Long = obj.heapId.id
     out.println("<ul>")
     out.println("<li>")
-    printAnchor("roots/" + hexString(id),"Exclude weak refs")
+    printAnchor("objectRootsExcWeak/" + hexString(id),"Exclude weak refs")
     out.println("</li>")
     out.println("<li>")
-    printAnchor("allRoots/" + hexString(id),"Include weak refs")
+    printAnchor("objectRootsIncWeak/" + hexString(id),"Include weak refs")
     out.println("</li>")
     out.println("</ul>")
 

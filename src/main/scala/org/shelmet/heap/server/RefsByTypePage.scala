@@ -6,7 +6,7 @@ import scala.collection._
 /**
  * References by type summary
  */
-class RefsByTypeQuery(snapshot : Snapshot,query : String) extends QueryHandler(snapshot) {
+class RefsByTypePage(snapshot : Snapshot,query : String) extends AbstractPage(snapshot) {
   override def run() {
     findObjectByQuery(query) match {
       case Some(clazz : JavaClass) =>

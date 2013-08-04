@@ -2,7 +2,7 @@ package org.shelmet.heap.server
 
 import org.shelmet.heap.model.Snapshot
 
-class HomepagePage(snapshot: Snapshot) extends QueryHandler(snapshot) {
+class HomepagePage(snapshot: Snapshot) extends AbstractPage(snapshot) {
   override def run() {
     html("Welcome to SHelmet") {
       out.println(

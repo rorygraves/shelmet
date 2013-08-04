@@ -1,5 +1,7 @@
 package org.shelmet.heap.model
 
+import org.shelmet.heap.util.SortUtil
+
 object ReachableObjects {
 
   def find(root: JavaHeapObject) = {
@@ -15,8 +17,7 @@ object ReachableObjects {
     visitFunc(root)
     bag -= root
 
-    import org.shelmet.heap.util.SortUtil.sortByFirstThen
-    val reachables = bag.toList.sortWith(sortByFirstThen(
+    val reachables = bag.toList.sortWith(SortUtil.sortByFn(
       (l,r)=> r.size - l.size,
       (l,r) => l.toString.compareTo(r.toString)))
 

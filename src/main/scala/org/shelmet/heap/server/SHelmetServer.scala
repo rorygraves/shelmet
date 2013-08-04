@@ -9,8 +9,25 @@ import scala.concurrent.Await
 import scala.concurrent.duration._
 import akka.io.Tcp.{Bound, CommandFailed}
 import com.typesafe.scalalogging.slf4j.Logging
+import org.shelmet.heap.Config
+import org.shelmet.heap.parser.HprofReader
 
-class QueryListener(port: Int, snapshot: Snapshot) extends Logging {
+object SHelmetServer extends Logging {
+  def apply(config : Config) = {
+    val dumpFile = config.dumpFile
+    logger.info(s"Reading from $dumpFile...")
+    val reader = new HprofReader(dumpFile.getAbsolutePath)
+    val model = Snapshot.readFromDump(reader,config.trackObjectAllocationStacks,config.trackReferencesToObjects)
+    new SHelmetServer(config.port, model)
+  }
+
+// useful for later testing
+//  def apply(port : Int,snapshot: Snapshot) = {
+//    new SHelmetServer(port,snapshot)
+//  }
+}
+
+class SHelmetServer private (port: Int, snapshot: Snapshot) extends Logging {
 
   implicit var system : ActorSystem = null
 
@@ -37,7 +54,9 @@ class QueryListener(port: Int, snapshot: Snapshot) extends Logging {
   }
 
   def stop() {
-    IO(Http) ! Http.Unbind
+    // wait for the http part to shutdown nicely first before
+    // terminating the actor system (otherwise you get random exceptions)
+    Patterns.ask(IO(Http),Http.Unbind,5000)
     system.shutdown()
   }
 }

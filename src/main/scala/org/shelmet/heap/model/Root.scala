@@ -7,6 +7,7 @@ import org.shelmet.heap.HeapId
  * the GC starts from when marking reachable objects.
  */
 object Root {
+  // TODO Make this an enum or equivalent
   final val INVALID_TYPE: Int = 0
   final val UNKNOWN: Int = 1
   final val SYSTEM_CLASS: Int = 2

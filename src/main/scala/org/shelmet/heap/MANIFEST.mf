@@ -1,2 +1,2 @@
 Manifest-Version: 1.0
-Main-Class: org.shelment.heap.Main
+Main-Class: org.shelmet.heap.Main

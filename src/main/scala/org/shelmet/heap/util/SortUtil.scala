@@ -2,14 +2,18 @@ package org.shelmet.heap.util
 
 object SortUtil {
 
-  def sortByFirstThen[X](cmp1 : (X,X) => Int,cmp2: (X,X) => Int) : (X,X) => Boolean = {
-    def cmpFn(x1 : X,x2 : X) : Boolean = {
-      val diff: Int = cmp1(x1,x2)
-      if (diff != 0)
-        diff < 0
-      else
-        cmp2(x1,x2) <0
+  def sortByFn[A](cmpFn1: (A, A) => Int,cmpFns: ((A, A) => Int) *) : (A,A) => Boolean = {
+    val cmpFnsV = (cmpFn1 :: cmpFns.toList).toVector
+
+    def sortFn(l : A,r : A) : Boolean = {
+      var i = 1
+      var res = cmpFnsV(0)(l,r)
+      while(res == 0 && i < cmpFnsV.length) {
+        res = cmpFnsV(i)(l,r)
+        i += 1
+      }
+      res < 0
     }
-    cmpFn
+    sortFn
   }
 }

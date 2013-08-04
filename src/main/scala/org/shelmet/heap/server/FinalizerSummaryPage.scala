@@ -2,7 +2,7 @@ package org.shelmet.heap.server
 
 import org.shelmet.heap.model.{Snapshot, JavaClass, JavaHeapObject}
 
-object FinalizerSummaryQuery {
+object FinalizerSummaryPage {
 
   private class HistogramElement(val clazz: JavaClass) extends Ordered[HistogramElement] {
     var count: Long = 0L
@@ -15,8 +15,8 @@ object FinalizerSummaryQuery {
   }
 }
 
-class FinalizerSummaryQuery(snapshot : Snapshot) extends QueryHandler(snapshot) {
-  import FinalizerSummaryQuery.HistogramElement
+class FinalizerSummaryPage(snapshot : Snapshot) extends AbstractPage(snapshot) {
+  import FinalizerSummaryPage.HistogramElement
 
   override def run() {
     html("Finalizer Summary") {
@@ -30,7 +30,7 @@ class FinalizerSummaryQuery(snapshot : Snapshot) extends QueryHandler(snapshot) 
 
   private def printFinalizerSummary(objects: List[JavaHeapObject]) {
     var count: Int = 0
-    var map = Map[JavaClass, FinalizerSummaryQuery.HistogramElement]()
+    var map = Map[JavaClass, FinalizerSummaryPage.HistogramElement]()
     objects foreach {
       obj =>
       count += 1

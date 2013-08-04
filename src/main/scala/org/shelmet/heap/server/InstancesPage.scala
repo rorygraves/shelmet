@@ -2,7 +2,7 @@ package org.shelmet.heap.server
 
 import org.shelmet.heap.model.{JavaHeapObject, Snapshot, JavaClass}
 
-class InstancesQuery(snapshot : Snapshot,query : String,includeSubclasses: Boolean) extends QueryHandler(snapshot) {
+class InstancesPage(snapshot : Snapshot,query : String,includeSubclasses: Boolean) extends AbstractPage(snapshot) {
 
   override def run() {
     findObjectByQuery(query) match {

@@ -1,25 +1,28 @@
 package org.shelmet.heap.server
 
-import org.shelmet.heap.model.Snapshot
+import org.shelmet.heap.model.{Root, Snapshot}
+import org.shelmet.heap.util.SortUtil
 
-class AllRootsPage(snapshot : Snapshot) extends QueryHandler(snapshot) {
+class RootSetPage(snapshot : Snapshot) extends AbstractPage(snapshot) {
   override def run() {
     html("All Members of the Rootset") {
 
-      import org.shelmet.heap.util.SortUtil.sortByFirstThen
-
-      val roots = snapshot.roots.sortWith( sortByFirstThen(
+      val roots = snapshot.roots.sortWith(SortUtil.sortByFn(
         (l,r) => r.getType - l.getType,
-        (l,r) => l.getDescription.compareTo(r.getDescription)
+        (l,r) => l.getDescription.compareTo(r.getDescription),
+        (l,r) => l.getReferencedItem.map { _.toString }.getOrElse("").compareTo(
+          r.getReferencedItem.map { _.toString }.getOrElse("")
+        )
       ))
 
       roots.groupBy(_.getType) foreach {
-        case (rootType, roots) =>
+        case (rootType, groupRoots) =>
           out.print("<h2>")
-          printEncoded(roots.head.getTypeName + " References")
+          printEncoded(groupRoots.head.getTypeName + " References")
           out.println("</h2>")
-          roots foreach {
+          groupRoots foreach {
             root =>
+              val x = root.getDescription
               printRoot(root)
               root.referer.foreach { r =>
                 out.print("<small> (from ")

@@ -1,8 +1,9 @@
 package org.shelmet.heap.server
 
 import org.shelmet.heap.model.Snapshot
+import org.shelmet.heap.util.{PlatformClasses, SortUtil}
 
-class InstancesCountQuery(snapshot : Snapshot,excludePlatform: Boolean) extends QueryHandler(snapshot) {
+class InstancesCountPage(snapshot : Snapshot,excludePlatform: Boolean) extends AbstractPage(snapshot) {
 
   override def run() {
     val title = if (excludePlatform) "Instance Counts for All Classes (excluding platform)"
@@ -15,8 +16,7 @@ class InstancesCountQuery(snapshot : Snapshot,excludePlatform: Boolean) extends 
         else
           snapshot.getClasses
 
-      import org.shelmet.heap.util.SortUtil.sortByFirstThen
-      val classes = classesL.toList.sortWith(sortByFirstThen(
+      val classes = classesL.toList.sortWith(SortUtil.sortByFn(
         (l,r)=>  r.getInstancesCount(includeSubclasses = false) - l.getInstancesCount(includeSubclasses = false),
         (l,r) => {
           val left = l.name
@@ -27,8 +27,10 @@ class InstancesCountQuery(snapshot : Snapshot,excludePlatform: Boolean) extends 
             else
               -1
           } else
-            left.compareTo(right)
-        }))
+            0
+        },
+        (l,r) => l.name.compareTo(r.name)
+      ))
 
       var totalSize: Long = 0
       var instances: Long = 0

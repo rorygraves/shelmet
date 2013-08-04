@@ -2,8 +2,9 @@ package org.shelmet.heap.server
 
 import org.shelmet.heap.model.{Snapshot, JavaHeapObject, ReferenceChain, Root}
 import org.shelmet.heap.HeapId
+import org.shelmet.heap.util.SortUtil
 
-class RootsQuery(snapshot : Snapshot,query : String,includeWeak: Boolean) extends QueryHandler(snapshot) {
+class ObjectRootsPage(snapshot : Snapshot,query : String,includeWeak: Boolean) extends AbstractPage(snapshot) {
 
   override def run() {
     val id = HeapId(parseHex(query))
@@ -17,12 +18,12 @@ class RootsQuery(snapshot : Snapshot,query : String,includeWeak: Boolean) extend
           "Rootset references to " + target + " (excludes weak refs)"
 
         html(title) {
-          import org.shelmet.heap.util.SortUtil.sortByFirstThen
-
-          val refs = snapshot.rootsetReferencesTo(target, includeWeak).sortWith(
-            sortByFirstThen(
+          val refs = snapshot.rootsetReferencesTo(target, includeWeak).sortWith(SortUtil.sortByFn(
               (l,r) => r.obj.getRoot.getType - l.obj.getRoot.getType,
-              (l,r) => l.depth - r.depth))
+              (l,r) => l.depth - r.depth,
+              (l,r) => l.obj.getRoot.getDescription.compareTo(r.obj.getRoot.getDescription),
+              (l,r) => l.obj.getRoot.getReferencedItem.map { _.toString }.getOrElse("").compareTo(
+                r.obj.getRoot.getReferencedItem.map { _.toString }.getOrElse(""))))
 
           out.print("<h1>References to ")
           printThing(target)
@@ -57,11 +58,11 @@ class RootsQuery(snapshot : Snapshot,query : String,includeWeak: Boolean) extend
           }
           out.println("<h2>Other queries</h2>")
           if (includeWeak) {
-            printAnchor("roots/"+ hexString(id.id),"Exclude weak refs")
+            printAnchor("objectRootsExcWeak/"+ hexString(id.id),"Exclude weak refs")
             out.println("<br/>")
           }
           if (!includeWeak) {
-            printAnchor("allRoots/" + hexString(id.id),"Include weak refs")
+            printAnchor("objectRootsIncWeak/" + hexString(id.id),"Include weak refs")
             out.println("<br/>")
           }
         }

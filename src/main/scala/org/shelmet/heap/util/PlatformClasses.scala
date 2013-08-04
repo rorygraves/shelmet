@@ -1,4 +1,4 @@
-package org.shelmet.heap.server
+package org.shelmet.heap.util
 
 import org.shelmet.heap.model.JavaClass
 

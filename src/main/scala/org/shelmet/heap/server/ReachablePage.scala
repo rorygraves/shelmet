@@ -3,7 +3,7 @@ package org.shelmet.heap.server
 import org.shelmet.heap.model.{Snapshot, JavaHeapObject, ReachableObjects}
 import org.shelmet.heap.HeapId
 
-class ReachableQuery(snapshot : Snapshot,query : String) extends QueryHandler(snapshot) {
+class ReachablePage(snapshot : Snapshot,query : String) extends AbstractPage(snapshot) {
   override def run() {
     html("Objects Reachable From " + query) {
       val id = HeapId(parseHex(query))

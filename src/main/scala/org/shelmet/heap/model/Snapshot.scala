@@ -8,7 +8,7 @@ import org.shelmet.heap.model.create.{ObjectPassDumpVisitor, InitialPassDumpVisi
 import org.shelmet.heap.HeapId
 import com.typesafe.scalalogging.slf4j.Logging
 import java.util.Date
-import org.shelmet.heap.server.PlatformClasses
+import org.shelmet.heap.util.PlatformClasses
 
 /**
  * Represents a snapshot of the Java objects in the VM at one instant.

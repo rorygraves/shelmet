@@ -5,7 +5,7 @@ import org.shelmet.heap.model.Snapshot
 /**
  * Query to show the StackTrace for a given root
  */
-class RootStackQuery(snapshot : Snapshot,query : String) extends QueryHandler(snapshot) {
+class RootStackPage(snapshot : Snapshot,query : String) extends AbstractPage(snapshot) {
   override def run() {
     val index = parseHex(query).asInstanceOf[Int]
     val root = snapshot.roots(index)

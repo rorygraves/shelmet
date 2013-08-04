@@ -2,7 +2,7 @@ package org.shelmet.heap.server
 
 import org.shelmet.heap.model.Snapshot
 
-class FinalizerObjectsQuery(snapshot : Snapshot) extends QueryHandler(snapshot) {
+class FinalizerObjectsPage(snapshot : Snapshot) extends AbstractPage(snapshot) {
 
   override def run() {
     html("Objects pending finalization") {

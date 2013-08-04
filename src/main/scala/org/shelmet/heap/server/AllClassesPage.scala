@@ -1,9 +1,9 @@
 package org.shelmet.heap.server
 
 import org.shelmet.heap.model.Snapshot
-import org.shelmet.heap.util.Misc
+import org.shelmet.heap.util.{PlatformClasses, Misc}
 
-class AllClassesPage(snapshot : Snapshot,excludePlatform: Boolean) extends QueryHandler(snapshot) {
+class AllClassesPage(snapshot : Snapshot,excludePlatform: Boolean) extends AbstractPage(snapshot) {
 
   override def run() {
     val title = if(excludePlatform)

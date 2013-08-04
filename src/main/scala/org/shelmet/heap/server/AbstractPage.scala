@@ -7,7 +7,7 @@ import java.io.UnsupportedEncodingException
 import java.net.URLEncoder
 import org.shelmet.heap.HeapId
 
-abstract class QueryHandler(snapshot : Snapshot) {
+abstract class AbstractPage(snapshot : Snapshot) {
 
   protected var out: PrintWriter = null
 
@@ -121,7 +121,7 @@ abstract class QueryHandler(snapshot : Snapshot) {
                   |                  <li><a href="/allClassesWithPlatform/">Including platform</a></li>
                   |                  <li><a href="/allClassesWithoutPlatform/">Excluding platform</a></li>
                   |                  <li class="divider"></li>
-                  |                  <li><a href="/showRoots">RootSet</a></li>
+                  |                  <li><a href="/rootSet">RootSet</a></li>
                   |                  <li class="divider"></li>
                   |                  <li class="nav-header">Instance Counts</li>
                   |                  <li><a href="/showInstanceCountsIncPlatform/">Including platform</a></li>

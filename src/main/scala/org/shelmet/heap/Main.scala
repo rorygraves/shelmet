@@ -1,13 +1,9 @@
 package org.shelmet.heap
 
-import org.shelmet.heap.model.Snapshot
-import org.shelmet.heap.server.QueryListener
-import org.shelmet.heap.parser.HprofReader
+import org.shelmet.heap.server.SHelmetServer
 import com.typesafe.scalalogging.slf4j.Logging
-import java.io.File
 
 object Main extends Logging {
-  // TODO Proper unit tests (not one big uber comparison)
   // TODO make reader not hand back binary blob for object values - ask interface for definition
   // TODO Planned - Calculate retained sized
   // TODO Planned - Overflow dump to disk allowing examination of larger heaps
@@ -15,16 +11,10 @@ object Main extends Logging {
   // TODO Planned - better displays//higher level views of collection classes.
   // TODO Planned - Dump comparisons (e.g. to detect leaks).
   // TODO Planned - Connect and take dump from within application
+  // TODO Planned - Update/provide utilities to provide a better dump/easier to change
 
   val PROGRAM_NAME = "SHelmet"
   val VERSION = "v0.1"
-
-  val DEFAULT_HTTP_PORT = 8080
-  case class Config(port : Int = DEFAULT_HTTP_PORT,trackObjectAllocationStacks : Boolean = true,
-                    trackReferencesToObjects : Boolean = true,
-                    dumpFile : File = new File(".") ) {
-
-  }
 
   val parser = new scopt.OptionParser[Config]("SHelmet") {
     head("SHelmet",VERSION)
@@ -32,7 +22,7 @@ object Main extends Logging {
            |        Pass <flag> directly to the runtime system. For")
            |        example, -J-mx512m to use a maximum heap size of 512MB")""".stripMargin)
     opt[Int]('p', "port") action { (x, c) =>
-      c.copy(port = x) } text(s"Set the port for the HTTP server.  Defaults to $DEFAULT_HTTP_PORT")
+      c.copy(port = x) } text(s"Set the port for the HTTP server.  Defaults to ${Config.DEFAULT_HTTP_PORT}")
     opt[Unit]("noStack") action { (_, c) =>
       c.copy(trackObjectAllocationStacks = false) } text("Turn off tracking object allocation call stack.")
     opt[Unit]("noRefs") action { (_, c) =>
@@ -46,13 +36,9 @@ object Main extends Logging {
   def main(args: Array[String]) {
 
     parser.parse(args, Config()) map { config =>
-      val dumpFile = config.dumpFile
-      logger.info(s"Reading from $dumpFile...")
       try {
-        val reader = new HprofReader(dumpFile.getAbsolutePath)
-        val model = Snapshot.readFromDump(reader,config.trackObjectAllocationStacks,config.trackReferencesToObjects)
-        val listener: QueryListener = new QueryListener(config.port, model)
-        listener.start() match {
+        val server = SHelmetServer(config)
+        server.start() match {
           case Some(portNum) =>
             logger.info("Started HTTP server on port " + portNum)
             logger.info("Server is ready.")
@@ -62,7 +48,7 @@ object Main extends Logging {
         }
       } catch {
         case e: Throwable =>
-          logger.error(s"Failed to parse file $dumpFile",e)
+          logger.error(s"Failed to parse file ${config.dumpFile}",e)
           System.exit(1)
       }
     } getOrElse {
