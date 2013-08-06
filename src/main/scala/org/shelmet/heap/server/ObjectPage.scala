@@ -215,9 +215,6 @@ class ObjectPage(snapshot : Snapshot,query : String) extends AbstractPage(snapsh
   }
 
   protected def printReferencesTo(obj: JavaHeapObject) {
-    if (obj.heapId.id == -1) {
-      return
-    }
     h2("References to this object:")
     obj.referers.toList.sortWith((a, b) => a.toString.compareTo(b.toString) <0) foreach {
       ref =>

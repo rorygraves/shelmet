@@ -100,7 +100,15 @@ class CompareTest extends FunSuite with Logging with BeforeAndAfterAll {
   }
 
   test("Render Histogram page") {
-    testPage("histogram","http://localhost:8080/histo/")
+    testPage("histogram","http://localhost:8080/histogram/")
+  }
+
+  test("Render Histogram page (sorted by class)") {
+    testPage("histogramByClass","http://localhost:8080/histogram/class")
+  }
+
+  test("Render Histogram page (by count)") {
+    testPage("histogramByCount","http://localhost:8080/histogram/count")
   }
 
   test("Render Finalizers page") {
@@ -116,11 +124,11 @@ class CompareTest extends FunSuite with Logging with BeforeAndAfterAll {
   }
 
   test("Render Object page (object array)") {
-    testPage("object2","http://localhost:8080/object/0x7f44c0cb8") // object array
+    testPage("objectObjectArray","http://localhost:8080/object/0x7f44c0cb8")
   }
 
   test("Render Object page (base type array)") {
-    testPage("object3","http://localhost:8080/object/0x7f44e95e8") // int array
+    testPage("objectIntArray","http://localhost:8080/object/0x7f44e95e8")
   }
 
   test("Render RootStack page") {

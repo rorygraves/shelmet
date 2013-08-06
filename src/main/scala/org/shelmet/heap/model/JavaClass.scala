@@ -32,6 +32,10 @@ class JavaClass(snapshotV : Snapshot,
       name.substring(0, pos)
   }
 
+  // all classes loaded by bootstrap loader are considered
+  // platform classes.
+  def isPlatformClass : Boolean = isBootstrap
+
   final def getClazz: JavaClass = snapshot.getJavaLangClass
 
   final def getSuperclass: Option[JavaClass] = superClassId.getOpt.asInstanceOf[Option[JavaClass]]
@@ -194,13 +198,6 @@ class JavaClass(snapshotV : Snapshot,
       else
         List.empty
     }
-//    for (aStatic <- statics) {
-//      val f = aStatic.field
-//      if (f.isObjectField) {
-//        val other = aStatic.getValue
-//        if (other == target) return
-//      }
-//    }
 
     if(target.heapId == superClassId)
       refs ::= "subclass"
@@ -210,7 +207,6 @@ class JavaClass(snapshotV : Snapshot,
 
     if(target.heapId == protDomainId)
       refs ::= "protection domain for"
-
 
     refs :::= super.describeReferenceTo(target)
 
@@ -227,13 +223,13 @@ class JavaClass(snapshotV : Snapshot,
   /**
    * @return The size of all instances of this class.  Correctly handles arrays.
    */
-  def getTotalInstanceSize: Long = {
+  lazy val getTotalInstanceSize: Long = {
     val instances = getInstances(includeSubclasses = false)
     val count: Int = instances.size
     if (count == 0 || !isArray)
-      return count * instanceSize
-
-    instances.foldLeft(0L)(_ + _.size)
+      count * instanceSize
+    else
+      instances.foldLeft(0L)(_ + _.size)
   }
 
   override def size: Int = snapshot.getJavaLangClass.getInstanceSize
@@ -290,6 +286,4 @@ class JavaClass(snapshotV : Snapshot,
       }
     }
   }
-
-
 }

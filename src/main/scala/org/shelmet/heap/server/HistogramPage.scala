@@ -8,32 +8,34 @@ import org.shelmet.heap.util.SortUtil
  */
 class HistogramPage(snapshot : Snapshot,sortParam : String) extends AbstractPage(snapshot) {
   override def run() {
-    val comparator: (JavaClass,JavaClass) => Boolean =
+
+    // the original code recomputed the values multiple times, instead capture and manipulate a tuple of
+    // class, instance count, and  total size for sorting and display
+
+    val comparator2: ((JavaClass,Int,Long),(JavaClass,Int,Long)) => Boolean =
       sortParam match {
         case "count" =>
-          SortUtil.sortByFn((l, r) => r.getInstancesCount(includeSubclasses = false) - l.getInstancesCount(includeSubclasses = false))
+          SortUtil.sortByFn((l, r) => r._2 - l._2)
         case "class" =>
-          SortUtil.sortByFn((l, r) => l.name.compareTo(r.name))
+          SortUtil.sortByFn((l, r) => l._1.name.compareTo(r._1.name))
         case _ =>
           SortUtil.sortByFn(
-            (l, r) => (r.getTotalInstanceSize - l.getTotalInstanceSize).toInt,
-            (l, r) => l.name.compareTo(r.name))
+            (l, r) => (r._3 - l._3).toInt,
+            (l, r) => l._1.name.compareTo(r._1.name))
       }
 
-    val classes = snapshot.getClasses.toList.sortWith(comparator)
+    val classItems = snapshot.getClasses.map { c => (c,c.getInstancesCount(false),c.getTotalInstanceSize) }.toList.sortWith(comparator2)
+
     html("Heap Histogram") {
-      out.println("""<p>""")
-      out.println("""<b><a href="/">All Classes (excluding platform)</a></b>""")
-      out.println("</p>")
       table {
-        out.println("""<tr><th><a href="/histo/class">Class</a></th>""")
-        out.println("""<th><a href="/histo/count">Instance Count</a></th>""")
-        out.println("""<th><a href="/histo/size">Total Size</a></th></tr>""")
-        for (clazz <- classes) {
+        out.println("""<tr><th><a href="/histogram/class">Class</a></th>""")
+        out.println("""<th><a href="/histogram/count">Instance Count</a></th>""")
+        out.println("""<th><a href="/histogram/size">Total Size</a></th></tr>""")
+        for (clazz <- classItems) {
           tableRow {
-            tableData(printClass(clazz))
-            tableData(out.println(clazz.getInstancesCount(includeSubclasses = false)))
-            tableData(out.println(clazz.getTotalInstanceSize))
+            tableData(printClass(clazz._1))
+            tableData(out.println(clazz._2))
+            tableData(out.println(clazz._3))
           }
         }
       }

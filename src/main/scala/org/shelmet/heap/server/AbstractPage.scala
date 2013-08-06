@@ -3,8 +3,6 @@ package org.shelmet.heap.server
 import org.shelmet.heap.model._
 import org.shelmet.heap.util.Misc
 import java.io.PrintWriter
-import java.io.UnsupportedEncodingException
-import java.net.URLEncoder
 import org.shelmet.heap.HeapId
 
 abstract class AbstractPage(snapshot : Snapshot) {
@@ -23,17 +21,6 @@ abstract class AbstractPage(snapshot : Snapshot) {
       snapshot.findThing(id,createIfMissing = false)
     } else
       snapshot.findClassByName(query)
-  }
-
-  // TODO this is ugly
-  protected def encodeForURL(s: String): String = {
-    try {
-      URLEncoder.encode(s, "UTF-8")
-    } catch {
-      case ex: UnsupportedEncodingException =>
-        ex.printStackTrace()
-        s
-    }
   }
 
   def table( c : => Unit ) {
@@ -127,7 +114,7 @@ abstract class AbstractPage(snapshot : Snapshot) {
                   |                  <li><a href="/showInstanceCountsIncPlatform/">Including platform</a></li>
                   |                  <li><a href="/showInstanceCountsExcPlatform/">Excluding platform</a></li>
                   |                  <li class="divider"></li>
-                  |                  <li><a href="/histo/">Heap histogram</a></li>
+                  |                  <li><a href="/histogram/">Heap histogram</a></li>
                   |                  <li class="divider"></li>
                   |                  <li><a href="/finalizerSummary/">Finalizer summary</a></li>
                   |                </ul>
@@ -174,12 +161,7 @@ abstract class AbstractPage(snapshot : Snapshot) {
     }
     thing match {
       case ho: JavaHeapObject =>
-        val id = ho.heapId.id
-        if (id == -1L) {
-          printEncoded(thing.toString)
-        } else {
-          printThingAnchorTag(ho.heapId,thing.toString + " (" + ho.size + " bytes)")
-        }
+        printThingAnchorTag(ho.heapId,thing.toString + " (" + ho.size + " bytes)")
       case b : Boolean => printEncoded(b.toString)
       case l : Long => printEncoded(l.toString)
       case c : Char => printEncoded(c.toString)
@@ -213,12 +195,7 @@ abstract class AbstractPage(snapshot : Snapshot) {
       out.println("null")
   }
 
-  protected def encodeForURL(clazz: JavaClass): String = {
-    if (clazz.heapId.id == -1)
-      encodeForURL(clazz.name)
-    else
-      clazz.getIdString
-  }
+  protected def encodeForURL(clazz: JavaClass): String = clazz.getIdString
 
   protected def printField(field: JavaField) {
     printEncoded(field.longName + " (" + field.signature + ")")

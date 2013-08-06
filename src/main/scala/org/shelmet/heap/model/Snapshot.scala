@@ -8,7 +8,6 @@ import org.shelmet.heap.model.create.{ObjectPassDumpVisitor, InitialPassDumpVisi
 import org.shelmet.heap.HeapId
 import com.typesafe.scalalogging.slf4j.Logging
 import java.util.Date
-import org.shelmet.heap.util.PlatformClasses
 
 /**
  * Represents a snapshot of the Java objects in the VM at one instant.
@@ -63,12 +62,10 @@ class Snapshot extends Logging {
 
   def noObjects = heapObjects.size
   def noClasses = classes.size
-  def noUserClasses = classes.values.filterNot(PlatformClasses.isPlatformClass).size
+  def noUserClasses = classes.values.filterNot(_.isPlatformClass).size
   def noRoots = roots.size
 
   def getSiteTrace(obj: JavaHeapObject): Option[StackTrace] = siteTraces.get(obj)
-
-
 
   def setIdentifierSize(size: Int) {
     identifierSize = size

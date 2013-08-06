@@ -1,6 +1,6 @@
 package org.shelmet.heap.model
 
-case class JavaField(name: String,longName : String,signature: String) {
+class JavaField(val name: String,val longName : String,val signature: String) {
 
   /**
    * @return true if the type of this field is heap object

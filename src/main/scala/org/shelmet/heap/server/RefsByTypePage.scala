@@ -15,28 +15,24 @@ class RefsByTypePage(snapshot : Snapshot,query : String) extends AbstractPage(sn
 
         clazz.getInstances(includeSubclasses = false) foreach {
           instance =>
-            if (instance.heapId.id != -1) {
-              instance.referers foreach {
-                ref =>
-                  val cl: JavaClass = ref.getClazz
-                  if (cl == null)
-                    System.out.println("null class for " + ref)
-                  else
-                    referrersStat.put(cl,referrersStat.getOrElse(cl,0L)+1)
-              }
-              instance.visitReferencedObjects{ obj =>
-                val cl: JavaClass = obj.getClazz
-                refereesStat.put(cl,refereesStat.getOrElse(cl,0L)+1)
-              }
+            instance.referers foreach {
+              ref =>
+                val cl: JavaClass = ref.getClazz
+                if (cl == null)
+                  System.out.println("null class for " + ref)
+                else
+                  referrersStat.put(cl,referrersStat.getOrElse(cl,0L)+1)
+            }
+            instance.visitReferencedObjects{ obj =>
+              val cl: JavaClass = obj.getClazz
+              refereesStat.put(cl,refereesStat.getOrElse(cl,0L)+1)
             }
         }
 
         html("References by Type") {
           out.println("<p>")
           printClass(clazz)
-          if (clazz.heapId.id != -1) {
-            out.println("[" + clazz.getIdString + "]")
-          }
+          out.println("[" + clazz.getIdString + "]")
           out.println("</p>")
           if (referrersStat.size != 0) {
             out.println("<h3>Referrers by Type</h3>")

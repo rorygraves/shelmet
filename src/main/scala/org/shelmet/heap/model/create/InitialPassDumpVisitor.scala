@@ -93,7 +93,7 @@ class InitialPassDumpVisitor(snapshot : Snapshot,callStack: Boolean) extends Abs
     val statics = staticItems.map { se =>
         val fieldName = getNameFromID(se.nameId)
         val signature = se.itemType.toString
-        val f = JavaField(fieldName,name + "." + fieldName, signature)
+        val f = new JavaField(fieldName,name + "." + fieldName, signature)
         new JavaStatic(snapshot,f, se.value)
     }
 
@@ -103,7 +103,7 @@ class InitialPassDumpVisitor(snapshot : Snapshot,callStack: Boolean) extends Abs
       fi =>
         val fieldName = getNameFromID(fi.nameId)
         val sig = fi.itemType.toString
-        JavaField(fieldName,name + "." + fieldName,sig)
+        new JavaField(fieldName,name + "." + fieldName,sig)
     }
 
     val c = new JavaClass(snapshot,id,name,superClassId,classLoaderId,signerId,protDomainId,statics,instanceSize,fields)
