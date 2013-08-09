@@ -29,7 +29,7 @@ trait QueryService extends HttpService with Logging {
 
   val queryRoute = {
     respondWithMediaType(`text/html`) {
-      // run each request in a seperate thread
+      // run each request in a separate thread
       detachTo(singleRequestServiceActor) {
         get {
           path("") {

@@ -18,18 +18,15 @@ class JavaObject(id: HeapId, snapshotV: Snapshot,classId : HeapId, fieldReaderSr
     getClazz.addInstance(this)
   }
 
-  lazy val fields = parseFields()
+  private lazy val fields = parseFields()
 
-  def getFields: Vector[Any] = fields
+  def getFieldsAndValues : List[(JavaField,Any)] = {
+    getClazz.getFieldsForInstance.zip(fields)
+  }
 
   def getField(name: String): Any = {
-    val instFields = getClazz.getFieldsForInstance
-
-    val idx = instFields.indexWhere(_.name == name)
-    if (idx == -1)
-      throw new IllegalStateException("Field " + name + " not found on class " + getClazz.displayName)
-    else
-      fields(idx)
+    getFieldsAndValues.find(_._1.name == name).getOrElse(
+      throw new IllegalStateException("Field " + name + " not found on class " + getClazz.displayName))._2
   }
 
   override def visitReferencedObjects(visit : JavaHeapObject => Unit) {
@@ -55,15 +52,11 @@ class JavaObject(id: HeapId, snapshotV: Snapshot,classId : HeapId, fieldReaderSr
    * be called if target is in the array returned by getChildrenForRootset.
    */
   override def describeReferenceTo(target: JavaHeapObject): List[String] = {
-    var refs = fields.zipWithIndex.filter{ case (value,idx) => value == target }.map {
-      case (value,idx) => "field "  + getClazz.getFieldForInstance(idx).name
-    }.toList
-
-    refs :::= super.describeReferenceTo(target)
-    refs
+    val refs = getClazz.getFieldsForInstance.zip(fields).filter(_._2 == target).map( "field " + _._1.name)
+    refs ::: super.describeReferenceTo(target)
   }
 
   private def parseFields(): Vector[Any] = {
-    getClazz.readAllFields(fieldReaderSrc.getReader)
+    getClazz.readAllFields(heapId,fieldReaderSrc.getReader)
   }
 }

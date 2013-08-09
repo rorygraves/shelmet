@@ -24,7 +24,8 @@ class HistogramPage(snapshot : Snapshot,sortParam : String) extends AbstractPage
             (l, r) => l._1.name.compareTo(r._1.name))
       }
 
-    val classItems = snapshot.getClasses.map { c => (c,c.getInstancesCount(false),c.getTotalInstanceSize) }.toList.sortWith(comparator2)
+    val classItems = snapshot.getClasses.map { c =>
+      (c,c.getInstancesCount(includeSubclasses = false),c.getTotalInstanceSize) }.toList.sortWith(comparator2)
 
     html("Heap Histogram") {
       table {

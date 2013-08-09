@@ -15,13 +15,6 @@ class JavaClass(snapshotV : Snapshot,
                 val fields : List[JavaField]
                 ) extends JavaHeapObject(heapId,snapshotV) {
 
-  def noFieldsOnClass : Int = fields.size
-
-  lazy val totalNumFields: Int = getSuperclass match {
-    case Some(sc) => sc.totalNumFields + noFieldsOnClass
-    case None => noFieldsOnClass
-  }
-
   def getPackage = {
     val pos = name.lastIndexOf(".")
     if (name.startsWith("["))
@@ -40,7 +33,7 @@ class JavaClass(snapshotV : Snapshot,
 
   final def getSuperclass: Option[JavaClass] = superClassId.getOpt.asInstanceOf[Option[JavaClass]]
 
-  final def getLoader: Option[JavaHeapObject] = loaderClassId.getOpt
+  final def loader: Option[JavaHeapObject] = loaderClassId.getOpt
 
   def getSigners: Option[JavaHeapObject] = signerId.getOpt
 
@@ -71,36 +64,13 @@ class JavaClass(snapshotV : Snapshot,
   def isString: Boolean = name == "java.lang.String"
 
   /**
-   * Get a numbered field from this class
+   * Includes superclass fields
    */
-  def getField(i: Int): JavaField = {
-    val fields = this.fields
-    if (i < 0 || i >= fields.length)
-      throw new Error(s"No field $i for $displayName")
-    fields(i)
-  }
-
-  /**
-   * Get a numbered field from all the fields that are part of instance
-   * of this class.  That is, include superclasses.
-   */
-  def getFieldForInstance(i: Int): JavaField = {
-    getSuperclass match {
-      case Some(sc) =>
-        val superClassTotalFields = sc.totalNumFields
-        if (i < superClassTotalFields)
-          sc.getFieldForInstance(i)
-        else
-          getField(i - superClassTotalFields)
-      case None =>
-        getField(i)
-    }
-  }
+  def getFieldsForInstance: List[JavaField] = fields ++ getSuperclass.map(_.getFieldsForInstance).getOrElse(List.empty)
 
   def isArray: Boolean = name.indexOf('[') != -1
 
   def getInstances(includeSubclasses: Boolean): List[JavaHeapObject] = {
-
     val instances = instanceRefs.map(_.getOpt.get)
 
     if (includeSubclasses)
@@ -121,20 +91,7 @@ class JavaClass(snapshotV : Snapshot,
   /**
    * This can only safely be called after resolve()
    */
-  def isBootstrap: Boolean = !getLoader.isDefined
-
-  /**
-   * Includes superclass fields
-   */
-  def getFieldsForInstance: List[JavaField] = {
-
-    val superItems = getSuperclass match {
-        case Some(sc) => sc.getFieldsForInstance
-        case None => List()
-      }
-
-    fields ++ superItems
-  }
+  def isBootstrap: Boolean = !loader.isDefined
 
   def getStatics: List[JavaStatic] = statics
 
@@ -208,17 +165,13 @@ class JavaClass(snapshotV : Snapshot,
     if(target.heapId == protDomainId)
       refs ::= "protection domain for"
 
-    refs :::= super.describeReferenceTo(target)
-
-    refs
+    refs ::: super.describeReferenceTo(target)
   }
 
   /**
    * @return the size of an instance of this class.  Gives 0 for an array type.
    */
-  def getInstanceSize: Int = {
-    instanceSize + snapshot.getMinimumObjectSize
-  }
+  def getInstanceSize: Int = instanceSize + snapshot.getMinimumObjectSize
 
   /**
    * @return The size of all instances of this class.  Correctly handles arrays.
@@ -237,7 +190,7 @@ class JavaClass(snapshotV : Snapshot,
   override def visitReferencedObjects(visit : JavaHeapObject => Unit) {
     super.visitReferencedObjects(visit)
     getSuperclass.foreach( visit(_) )
-    getLoader.foreach( visit )
+    loader.foreach( visit )
     getSigners.foreach( visit )
     getProtectionDomain.map( visit )
 
@@ -257,12 +210,8 @@ class JavaClass(snapshotV : Snapshot,
     instanceRefs += inst.heapId
   }
 
-  def readAllFields(fieldReader : DataReader) : Vector[Any] = {
-    val myFields = readClassFields(fieldReader)
-    (myFields ++ getSuperclass.map( _.readAllFields(fieldReader)).getOrElse(Nil)).toVector
-  }
-
-  def readClassFields(fieldReader : DataReader) : List[Any] = {
+  def readAllFields(heapId : HeapId,fieldReader : DataReader) : Vector[Any] = {
+    val fields = getFieldsForInstance
     fields.map { f =>
       val sig = f.signature.charAt(0)
 
@@ -272,7 +221,7 @@ class JavaClass(snapshotV : Snapshot,
           if(id.isNull)
             null
           else
-          snapshot.findHeapObject(id).get
+            snapshot.findHeapObject(id).get
         case 'Z' => fieldReader.readBoolean
         case 'B' => fieldReader.readByte
         case 'S' => fieldReader.readShort
@@ -284,6 +233,6 @@ class JavaClass(snapshotV : Snapshot,
         case _ =>
           throw new RuntimeException("invalid signature: " + sig)
       }
-    }
+    }.toVector
   }
 }

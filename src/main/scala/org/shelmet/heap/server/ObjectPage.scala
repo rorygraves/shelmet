@@ -70,11 +70,9 @@ class ObjectPage(snapshot : Snapshot,query : String) extends AbstractPage(snapsh
     }
 
     out.println("<h2>Instance data members:</h2>")
-    val fields: List[JavaField] = obj.getClazz.getFieldsForInstance
+    val fieldsAndValues = obj.getFieldsAndValues
 
-    val things: Vector[Any] = obj.getFields
-
-    val set = fields.zip(things).sortWith {
+    val set = fieldsAndValues.sortWith {
       case ((lhsField,lhsThing),(rhsField,rhsThing)) =>
         lhsField.longName.compareTo(rhsField.longName) < 0
     }
@@ -129,11 +127,11 @@ class ObjectPage(snapshot : Snapshot,query : String) extends AbstractPage(snapsh
       }
       tableRow {
         tableData { out.println("<b>ClassLoader:</b>") }
-        tableData { printThing(clazz.getLoader.getOrElse(null)) }
+        tableData { printThing(clazz.loader.getOrElse(null)) }
       }
       tableRow {
         tableData { out.println("<b>Signers:</b>") }
-        tableData { printThing(clazz.getSigners.getOrElse(null)) }
+        tableData { printThing(clazz. getSigners.getOrElse(null)) }
       }
       tableRow {
         tableData { out.println("<b>Protection Domain:</b>") }
