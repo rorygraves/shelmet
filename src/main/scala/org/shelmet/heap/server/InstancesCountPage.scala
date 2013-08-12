@@ -53,7 +53,7 @@ class InstancesCountPage(snapshot : Snapshot,excludePlatform: Boolean) extends A
         instances += count
         totalSize += clazz.getTotalInstanceSize
       }
-      out.println("<h2>Total of " + instances + " instances occupying " + totalSize + " bytes.</h2>")
+      h2(s"Total of $instances instances occupying $totalSize bytes.")
     }
   }
 }

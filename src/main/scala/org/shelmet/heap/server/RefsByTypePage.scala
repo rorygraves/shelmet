@@ -45,12 +45,12 @@ class RefsByTypePage(snapshot : Snapshot,query : String) extends AbstractPage(sn
         }
       case Some(_ : JavaHeapObject) =>
         val text = query + " is not a class object"
-        html(text) {
+        html("References by Type") {
           out.println(text)
         }
       case None =>
         val text = "class not found: " + query
-        html(text) {
+        html("References by Type") {
           out.println(text)
         }
     }

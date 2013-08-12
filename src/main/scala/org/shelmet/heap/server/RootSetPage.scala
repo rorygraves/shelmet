@@ -17,9 +17,9 @@ class RootSetPage(snapshot : Snapshot) extends AbstractPage(snapshot) {
 
       roots.groupBy(_.getType) foreach {
         case (rootType, groupRoots) =>
-          out.print("<h2>")
-          printEncoded(groupRoots.head.getTypeName + " References")
-          out.println("</h2>")
+          h2 {
+            printEncoded(groupRoots.head.getTypeName + " References")
+          }
           groupRoots foreach {
             root =>
               val x = root.getDescription

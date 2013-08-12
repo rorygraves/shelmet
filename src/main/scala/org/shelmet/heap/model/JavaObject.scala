@@ -1,27 +1,34 @@
 package org.shelmet.heap.model
 
-import org.shelmet.heap.parser.BlockDataReader
 import org.shelmet.heap.HeapId
 
 /**
  * Represents Java instance
+ * @param fieldsLength The length of the field values (in bytes)
  */
-class JavaObject(id: HeapId, snapshotV: Snapshot,classId : HeapId, fieldReaderSrc: BlockDataReader)
+class JavaObject(id: HeapId, snapshotV: Snapshot,classId : HeapId,val fieldValues : Vector[Any],fieldsLength : Int)
   extends JavaHeapObject(id, snapshotV) {
 
   override def getClazz: JavaClass = classId.getOpt(snapshot).get.asInstanceOf[JavaClass]
 
-  override def size: Int = snapshot.getMinimumObjectSize + fieldReaderSrc.length
+  override def size: Int = snapshot.getMinimumObjectSize + fieldsLength
 
   override def resolve(snapshot: Snapshot) {
-    fields
+    resolvedFields.length // force the resolution of heap objects
     getClazz.addInstance(this)
   }
 
-  private lazy val fields = parseFields()
+  private def resolvedFields = fieldValues.map( _ match {
+    case id : HeapId =>
+        if(id.isNull)
+          null
+        else
+          snapshot.findHeapObject(id).get
+    case x => x
+  })
 
   def getFieldsAndValues : List[(JavaField,Any)] = {
-    getClazz.getFieldsForInstance.zip(fields)
+    getClazz.getFieldsForInstance.zip(resolvedFields)
   }
 
   def getField(name: String): Any = {
@@ -32,8 +39,8 @@ class JavaObject(id: HeapId, snapshotV: Snapshot,classId : HeapId, fieldReaderSr
   override def visitReferencedObjects(visit : JavaHeapObject => Unit) {
     super.visitReferencedObjects(visit)
 
-    fields.foreach {
-      case f :JavaHeapObject => visit(f)
+    fieldValues.foreach {
+      case h : HeapId if !h.isNull=> visit(h.getOpt.get)
       case _ =>
     }
   }
@@ -41,7 +48,7 @@ class JavaObject(id: HeapId, snapshotV: Snapshot,classId : HeapId, fieldReaderSr
   override def refersOnlyWeaklyTo(ss: Snapshot, other: JavaHeapObject): Boolean = {
     if (ss.weakReferenceClass != null && ss.weakReferenceClass.isAssignableFrom(getClazz)) {
       val referentFieldIndex = ss.referentFieldIndex
-      !fields.zipWithIndex.exists { case (value,idx) => value == other && !(idx == referentFieldIndex) }
+      !fieldValues.zipWithIndex.exists { case (value,idx) => value == other.heapId && !(idx == referentFieldIndex) }
     }
     else
       false
@@ -52,11 +59,7 @@ class JavaObject(id: HeapId, snapshotV: Snapshot,classId : HeapId, fieldReaderSr
    * be called if target is in the array returned by getChildrenForRootset.
    */
   override def describeReferenceTo(target: JavaHeapObject): List[String] = {
-    val refs = getClazz.getFieldsForInstance.zip(fields).filter(_._2 == target).map( "field " + _._1.name)
+    val refs = getClazz.getFieldsForInstance.zip(fieldValues).filter(_._2 == target.heapId).map( "field " + _._1.name)
     refs ::: super.describeReferenceTo(target)
-  }
-
-  private def parseFields(): Vector[Any] = {
-    getClazz.readAllFields(heapId,fieldReaderSrc.getReader)
   }
 }

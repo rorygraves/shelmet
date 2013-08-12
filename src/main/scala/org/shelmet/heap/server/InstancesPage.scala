@@ -30,7 +30,7 @@ class InstancesPage(snapshot : Snapshot,query : String,includeSubclasses: Boolea
               totalSize += obj.size
               instances += 1
           }
-          out.println("<h2>Total of " + instances + " instances occupying " + totalSize + " bytes.</h2>")
+          h2(s"Total of $instances instances occupying $totalSize bytes.")
         }
       case Some(x : JavaHeapObject) =>
         val text = s"Object ${x.getIdString} is not a class"

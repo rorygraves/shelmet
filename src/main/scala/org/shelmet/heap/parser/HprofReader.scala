@@ -252,7 +252,15 @@ class HprofReader(fileName: String) extends Logging {
           val classID = reader.readHeapId
           val bytesFollowing = reader.readInt
           val fieldValues = reader.readBytes(bytesFollowing)
-          dumpVisitor.instanceDump(id,stackTraceSerialId,classID,new BlockDataReader(fieldValues,identifierSize))
+          val fieldSigs = dumpVisitor.getClassFieldInfo(classID)
+
+          val blockReader = new BlockDataReader(fieldValues,identifierSize)
+          val fields = fieldSigs match {
+            case Some(sigs : List[String]) => Some(readInstanceFieldsFields(sigs,blockReader.getReader))
+            case None => None
+          }
+
+          dumpVisitor.instanceDump(id,stackTraceSerialId,classID,fields,blockReader.length)
         case HPROF_GC_OBJ_ARRAY_DUMP =>
           val id = reader.readHeapId
           val stackTraceSerialId = reader.readInt
@@ -294,6 +302,30 @@ class HprofReader(fileName: String) extends Logging {
 
     readValueForTypeSignature(reader,itemType)
   }
+
+
+  def readInstanceFieldsFields(signatures : List[String],fieldReader : DataReader) : Vector[Any] = {
+    signatures.map { signature =>
+      val sig = signature.charAt(0)
+
+      sig match {
+        case 'L' | '[' =>
+          val id = fieldReader.readHeapId
+          id
+        case 'Z' => fieldReader.readBoolean
+        case 'B' => fieldReader.readByte
+        case 'S' => fieldReader.readShort
+        case 'C' => fieldReader.readChar
+        case 'I' => fieldReader.readInt
+        case 'J' => fieldReader.readLong
+        case 'F' => fieldReader.readFloat
+        case 'D' => fieldReader.readDouble
+        case _ =>
+          throw new RuntimeException("invalid signature: " + sig)
+      }
+    }.toVector
+  }
+
 
   private def readValueForTypeSignature(reader : DataReader,itemType: Char) : Any = {
     itemType match {

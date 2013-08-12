@@ -35,6 +35,17 @@ abstract class AbstractPage(snapshot : Snapshot) {
     out.println("</tr>")
   }
 
+  def ul[A](values : Iterable[A],f : A=>Unit) {
+    out.println("<ul>")
+    values foreach { a =>
+      out.println("<li>")
+      f(a)
+      out.println("</li>")
+    }
+
+    out.println("</ul>")
+  }
+
   def tableData( s : String ) { tableData(out.println(s)) }
 
   def tableData( c : => Unit ) {
@@ -50,7 +61,7 @@ abstract class AbstractPage(snapshot : Snapshot) {
   }
 
   protected def h2(s : String) {
-    h2(out.println(s))
+    h2(out.print(s))
   }
 
   protected def pageAnchor(anchorName : String) {
@@ -58,7 +69,7 @@ abstract class AbstractPage(snapshot : Snapshot) {
   }
 
   protected def h2( c : => Unit ) {
-    out.println("<h2>")
+    out.print("<h2>")
     c
     out.println("</h2>")
   }

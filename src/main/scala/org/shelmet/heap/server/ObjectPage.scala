@@ -60,16 +60,17 @@ class ObjectPage(snapshot : Snapshot,query : String) extends AbstractPage(snapsh
       case jso : JavaObject if jso.getClazz.isString =>
 
         val value: Any = jso.getField("value")
-        val valStr = "<h2>Value:</h2> " + Misc.encodeHtml(value match {
+        val valStr = " " + Misc.encodeHtml(value match {
           case array: JavaValueArray => array.valueString()
           case _ => "null"
         })
 
+        h2("Value:")
         out.println(valStr)
       case _ =>
     }
 
-    out.println("<h2>Instance data members:</h2>")
+    h2("Instance data members:")
     val fieldsAndValues = obj.getFieldsAndValues
 
     val set = fieldsAndValues.sortWith {
@@ -89,9 +90,9 @@ class ObjectPage(snapshot : Snapshot,query : String) extends AbstractPage(snapsh
   private def printFullObjectArray(arr: JavaObjectArray) {
     val elements = arr.elements.zipWithIndex
     out.println("<h1>Array of " + elements.size + " objects</h1>")
-    out.println("<h2>Class:</h2>")
+    h2("Class:")
     printClass(arr.getClazz)
-    out.println("<h2>Values</h2>")
+    h2("Values")
     elements foreach { case (item,idx) =>
       out.print("" + idx + " : ")
       printThing(item)
@@ -102,12 +103,11 @@ class ObjectPage(snapshot : Snapshot,query : String) extends AbstractPage(snapsh
   private def printAllocationSite(obj: JavaHeapObject) {
     obj.getAllocatedFrom match {
       case Some(trace) if !trace.frames.isEmpty =>
-        out.println("<h2>Object allocated from:</h2>")
+        h2("Object allocated from:")
         printStackTrace(trace)
       case _ =>
     }
   }
-
 
   protected def printFullClass(clazz: JavaClass) {
 
@@ -161,17 +161,6 @@ class ObjectPage(snapshot : Snapshot,query : String) extends AbstractPage(snapsh
           else
             out.println(s"""<a href="#staticFields">$staticFieldsCount</a>""")}
       }
-    }
-
-    def ul[A](values : Iterable[A],f : A=>Unit) {
-      out.println("<ul>")
-      values foreach { a =>
-        out.println("<li>")
-        f(a)
-        out.println("</li>")
-      }
-
-      out.println("</ul>")
     }
 
     if(subclassCount > 0) {

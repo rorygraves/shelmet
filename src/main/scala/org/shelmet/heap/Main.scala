@@ -4,7 +4,6 @@ import org.shelmet.heap.server.SHelmetServer
 import com.typesafe.scalalogging.slf4j.Logging
 
 object Main extends Logging {
-  // TODO make reader not hand back binary blob for object values - ask interface for definition
   // TODO Planned - Calculate retained sized
   // TODO Planned - Overflow dump to disk allowing examination of larger heaps
   // TODO Planned - An OQL equivalent using Scala and dynamic evaluation

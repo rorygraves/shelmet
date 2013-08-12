@@ -99,6 +99,10 @@ class CompareTest extends FunSuite with Logging with BeforeAndAfterAll {
     testPage("rootSet","http://localhost:8080/rootSet/")
   }
 
+  test("Render Finalizer Objects page") {
+    testPage("finalizerObjects","http://localhost:8080/finalizerObjects/")
+  }
+
   test("Render Histogram page") {
     testPage("histogram","http://localhost:8080/histogram/")
   }
@@ -123,6 +127,10 @@ class CompareTest extends FunSuite with Logging with BeforeAndAfterAll {
     testPage("object","http://localhost:8080/object/0x7f4554d90")
   }
 
+  test("Render Object page (java.lang.String") {
+    testPage("objectString","http://localhost:8080/object/0x7f45682a8")
+  }
+
   test("Render Object page (object array)") {
     testPage("objectObjectArray","http://localhost:8080/object/0x7f44c0cb8")
   }
@@ -133,6 +141,14 @@ class CompareTest extends FunSuite with Logging with BeforeAndAfterAll {
 
   test("Render RootStack page") {
     testPage("rootStack","http://localhost:8080/rootStack/0x1")
+  }
+
+  test("Render RootStack page (illegal/notFound)") {
+    testPage("rootStackIllegal","http://localhost:8080/rootStack/-5")
+  }
+
+  test("Render RootStack page (no stack)") {
+    testPage("rootStackNoStack","http://localhost:8080/rootStack/150")
   }
 
   test("Render Object Roots page (Excluding Weak Refs)") {
@@ -159,6 +175,14 @@ class CompareTest extends FunSuite with Logging with BeforeAndAfterAll {
     testPage("instances1","http://localhost:8080/instances/0x7faeff1f8")
   }
 
+  test("Render Instances page (of non-class)") {
+    testPage("instancesOfNonClass","http://localhost:8080/instances/0x7f44c0018")
+  }
+
+  test("Render Instances page (not found)") {
+    testPage("instancesNotFound","http://localhost:8080/instances/0x7f44c0019")
+  }
+
   test("Render Instances page (excluding subclasses)") {
     testPage("excludeSubclasses","http://localhost:8080/instances/0x7fae220b0")
   }
@@ -178,4 +202,13 @@ class CompareTest extends FunSuite with Logging with BeforeAndAfterAll {
   test("Render RefsByType page") {
     testPage("refsByType1","http://localhost:8080/refsByType/0x7fb27e868")
   }
+
+  test("Render RefsByType page (of non-class)") {
+    testPage("refsByTypeNonObject","http://localhost:8080/refsByType/0x7f44c0018")
+  }
+
+  test("Render RefsByType page (missing object)") {
+    testPage("refsByTypeMissing","http://localhost:8080/refsByType/0x7f44c0019")
+  }
+
 }

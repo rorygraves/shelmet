@@ -17,6 +17,12 @@ trait DumpVisitor {
   def gcRootStickyClass(id : Long) {}
   def gcRootThreadBlock(id : Long,threadSeq : Int) {}
   def gcRootMonitorUsed(id : Long) {}
+
+  /** Given a heap id of a class object return the signatures for that object
+    * @return a list of field signatures
+    */
+  def getClassFieldInfo(classHeapId : HeapId) : Option[List[String]]  = { None }
+
   def classDump(id : HeapId,stackTraceSerialId : Int,
                 superClassId : HeapId,
                 classLoaderId : HeapId,
@@ -26,7 +32,7 @@ trait DumpVisitor {
                 constPoolEntries : Map[Int,Any],
                 staticItems : List[ClassStaticEntry],
                 fieldItems : List[ClassFieldEntry]) {}
-  def instanceDump(id : HeapId,stackTraceSerialId : Int,classId : HeapId,bdr : BlockDataReader) {}
+  def instanceDump(id : HeapId,stackTraceSerialId : Int,classId : HeapId,fields : Option[Vector[Any]],fieldsLengthBytes : Int) {}
   def objectArrayDump(id : HeapId,stackTraceSerialId : Int,numElements : Int,elementClassId : HeapId,elementIDs : Seq[HeapId]) {}
   def unloadClass(classSerialNo : Int) {}
   def heapDumpEnd() {}

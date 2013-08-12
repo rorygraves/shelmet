@@ -16,8 +16,18 @@ class ObjectPassDumpVisitor(snapshot : Snapshot,callStack: Boolean) extends Abst
     snapshot.setSiteTrace(va, stackTrace)
   }
 
-  override def instanceDump(id : HeapId,stackTraceSerialId : Int,classId : HeapId,bdr : BlockDataReader) {
-    val jObj = new JavaObject(id,snapshot,classId,bdr)
+  override def getClassFieldInfo(classHeapId : HeapId) : Option[List[String]] = {
+    snapshot.findHeapObject(classHeapId) match {
+      case Some(clazz : JavaClass) => Some(clazz.getFieldsForInstance.map(_.signature))
+      case Some(other : JavaHeapObject) => throw new IllegalStateException("Requested classid " + classHeapId + "not correct type")
+      case None => None
+    }
+  }
+
+  override def instanceDump(id : HeapId,stackTraceSerialId : Int,classId : HeapId,fields : Option[Vector[Any]],fieldsLengthBytes : Int) {
+    if(!fields.isDefined)
+      throw new IllegalStateException("Fields must be defined for instance declaration")
+    val jObj = new JavaObject(id,snapshot,classId,fields.get,fieldsLengthBytes)
     snapshot.addHeapObject(id, jObj)
 
     val stackTrace = getStackTraceFromSerial(stackTraceSerialId)

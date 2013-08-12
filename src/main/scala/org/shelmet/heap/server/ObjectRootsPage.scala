@@ -56,7 +56,7 @@ class ObjectRootsPage(snapshot : Snapshot,query : String,includeWeak: Boolean) e
               ref = next
             }
           }
-          out.println("<h2>Other queries</h2>")
+          h2("Other queries")
           if (includeWeak) {
             printAnchor("objectRootsExcWeak/"+ hexString(id.id),"Exclude weak refs")
             out.println("<br/>")

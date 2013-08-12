@@ -8,12 +8,12 @@ import org.shelmet.heap.model.Snapshot
 class RootStackPage(snapshot : Snapshot,query : String) extends AbstractPage(snapshot) {
   override def run() {
     val index = parseHex(query).asInstanceOf[Int]
-    val root = snapshot.roots(index)
-    if (root == null) {
+    if(index < 0 || index >= snapshot.noRoots) {
       html("Root not found") {
         out.println("Root at " + index + " not found")
       }
     } else {
+      val root = snapshot.roots(index)
       root.stackTrace match {
         case Some(t) if !t.frames.isEmpty =>
           html("Stack Trace for " + root.getDescription) {

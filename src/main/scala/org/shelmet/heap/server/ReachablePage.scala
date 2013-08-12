@@ -22,7 +22,7 @@ class ReachablePage(snapshot : Snapshot,query : String) extends AbstractPage(sna
         printThing(thing)
         out.println("<br/>")
       }
-      out.println("<h2>Total of " + instances + " instances occupying " + totalSize + " bytes.</h2>")
+      h2(s"Total of $instances instances occupying $totalSize bytes.")
     }
   }
 }

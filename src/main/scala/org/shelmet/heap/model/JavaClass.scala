@@ -1,6 +1,5 @@
 package org.shelmet.heap.model
 
-import org.shelmet.heap.parser.DataReader
 import org.shelmet.heap.HeapId
 
 class JavaClass(snapshotV : Snapshot,
@@ -208,31 +207,5 @@ class JavaClass(snapshotV : Snapshot,
 
   private[model] def addInstance(inst: JavaHeapObject) {
     instanceRefs += inst.heapId
-  }
-
-  def readAllFields(heapId : HeapId,fieldReader : DataReader) : Vector[Any] = {
-    val fields = getFieldsForInstance
-    fields.map { f =>
-      val sig = f.signature.charAt(0)
-
-      sig match {
-        case 'L' | '[' =>
-          val id = fieldReader.readHeapId
-          if(id.isNull)
-            null
-          else
-            snapshot.findHeapObject(id).get
-        case 'Z' => fieldReader.readBoolean
-        case 'B' => fieldReader.readByte
-        case 'S' => fieldReader.readShort
-        case 'C' => fieldReader.readChar
-        case 'I' => fieldReader.readInt
-        case 'J' => fieldReader.readLong
-        case 'F' => fieldReader.readFloat
-        case 'D' => fieldReader.readDouble
-        case _ =>
-          throw new RuntimeException("invalid signature: " + sig)
-      }
-    }.toVector
   }
 }
