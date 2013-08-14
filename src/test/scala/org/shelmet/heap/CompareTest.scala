@@ -155,6 +155,10 @@ class CompareTest extends FunSuite with Logging with BeforeAndAfterAll {
     testPage("objectRootsExcWeak","http://localhost:8080/objectRootsExcWeak/0x7f44cacb0")
   }
 
+  test("Render Object Roots page - not found") {
+    testPage("objectRootsExcWeakNotFound","http://localhost:8080/objectRootsExcWeak/0x7f44fd229")
+  }
+
   test("Render Object Roots page (Including Weak Refs)") {
     testPage("objectRootsIncWeak","http://localhost:8080/objectRootsIncWeak/0x7f44cacb0")
   }

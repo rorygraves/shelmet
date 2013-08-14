@@ -23,7 +23,6 @@ trait QueryService extends HttpService with Logging {
 
   def showPath(req: HttpRequest) = LogEntry("Method = %s, Path = %s" format(req.method, req.uri), Logging.InfoLevel)
 
-
   // we use the enclosing ActorContext's or ActorSystem's dispatcher for our Futures and Scheduler
   implicit def executionContext = actorRefFactory.dispatcher
 
@@ -105,10 +104,13 @@ trait QueryService extends HttpService with Logging {
     val startTime = System.currentTimeMillis()
     // TODO make this emit something nice on failure
     // TODO update the writer so it chunks the results rather than collecting it to a string and output as one - stops OOM on large results
-    val baos = new ByteArrayOutputStream()
+    val baos = new ByteArrayOutputStream(16*1024)
     val pw = new PrintWriter(new OutputStreamWriter(baos))
     query.setOutput(pw)
+    val qs = System.currentTimeMillis()
     query.run()
+    val qe = System.currentTimeMillis()
+    println(" query run took: " + (qe -qs))
     pw.flush()
     val res = baos.toString
     val endTime = System.currentTimeMillis()

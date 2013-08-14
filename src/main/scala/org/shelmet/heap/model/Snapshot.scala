@@ -1,7 +1,7 @@
 package org.shelmet.heap.model
 
 import java.lang.ref.SoftReference
-import scala.collection.SortedMap
+import scala.collection.{SortedSet, SortedMap}
 import scala.collection.mutable.ListBuffer
 import org.shelmet.heap.parser.HprofReader
 import org.shelmet.heap.model.create.{ObjectPassDumpVisitor, InitialPassDumpVisitor}
@@ -37,7 +37,7 @@ class Snapshot extends Logging {
 
   import Snapshot._
 
-  private var heapObjects = Map[HeapId, JavaHeapObject]()
+  private var heapObjects = SortedMap[HeapId, JavaHeapObject]()
   var roots: List[Root] = Nil
   private var classes = SortedMap[String, JavaClass]()
   private var siteTraces = Map[JavaHeapObject, StackTrace]()
@@ -197,7 +197,7 @@ class Snapshot extends Logging {
 
   def rootsetReferencesTo(target: JavaHeapObject, includeWeak: Boolean): List[ReferenceChain] = {
     val fifo = ListBuffer[ReferenceChain]()
-    var visited = Set[JavaHeapObject]()
+    var visited = SortedSet[JavaHeapObject]()
     var result = List[ReferenceChain]()
     visited += target
 
@@ -205,8 +205,8 @@ class Snapshot extends Logging {
     while (fifo.size > 0) {
       val chain: ReferenceChain = fifo.remove(0)
       val curr: JavaHeapObject = chain.obj
-      if (curr.getRoot != null)
-        result = chain ::result
+      if (curr.getRoot.isDefined)
+        result = chain :: result
 
       curr.referers.foreach {
         t =>
@@ -228,7 +228,7 @@ class Snapshot extends Logging {
     }
   }
 
-  private[model] def getRoot(obj: JavaHeapObject): Root = rootsMap.getOrElse(obj,null)
+  private[model] def getRoot(obj: JavaHeapObject): Option[Root] = rootsMap.get(obj)
 
   private[model] def getJavaLangClass: JavaClass = javaLangClass
 

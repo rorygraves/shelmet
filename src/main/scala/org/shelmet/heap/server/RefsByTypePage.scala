@@ -18,10 +18,7 @@ class RefsByTypePage(snapshot : Snapshot,query : String) extends AbstractPage(sn
             instance.referers foreach {
               ref =>
                 val cl: JavaClass = ref.getClazz
-                if (cl == null)
-                  System.out.println("null class for " + ref)
-                else
-                  referrersStat.put(cl,referrersStat.getOrElse(cl,0L)+1)
+                 referrersStat.put(cl,referrersStat.getOrElse(cl,0L)+1)
             }
             instance.visitReferencedObjects{ obj =>
               val cl: JavaClass = obj.getClazz

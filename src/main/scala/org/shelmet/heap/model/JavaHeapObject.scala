@@ -2,19 +2,22 @@ package org.shelmet.heap.model
 
 import org.shelmet.heap.util.Misc
 import org.shelmet.heap.HeapId
+import scala.collection.SortedSet
 
 /**
  * Represents an object that's allocated out of the Java heap.  It occupies
  * memory in the VM.  It can be a
  * JavaClass, a JavaObjectArray, a JavaValueArray or a JavaObject.
  */
-abstract class JavaHeapObject(val heapId : HeapId,snapshotV : Snapshot) {
+abstract class JavaHeapObject(val heapId : HeapId,snapshotV : Snapshot) extends Ordered[JavaHeapObject] {
 
   implicit val snapshot : Snapshot = snapshotV
 
-  private var referersSet: Set[HeapId] = Set()
+  private var referersSet: SortedSet[HeapId] = SortedSet.empty
 
-  def referers : Set[JavaHeapObject] = referersSet.map(snapshot.findHeapObject(_).get)
+  def compare(that: JavaHeapObject): Int = heapId.compareTo(that.heapId)
+
+  def referers : SortedSet[JavaHeapObject] = referersSet.map(snapshot.findHeapObject(_).get)
 
   private[model] def addReferenceFrom(other: JavaHeapObject) {
     referersSet += other.heapId
@@ -62,7 +65,7 @@ abstract class JavaHeapObject(val heapId : HeapId,snapshotV : Snapshot) {
    * If the rootset includes this object, return a Root describing one
    * of the reasons why.
    */
-  def getRoot: Root = snapshot.getRoot(this)
+  def getRoot: Option[Root] = snapshot.getRoot(this)
 
   /**
    * Given other, which the caller promises is in referers, determines if

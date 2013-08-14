@@ -1,7 +1,6 @@
 package org.shelmet.heap.model
 
 import org.shelmet.heap.HeapId
-import scala.None
 
 class JavaObjectArray(id : HeapId,snapshot : Snapshot,classId: HeapId,elementIDs : Seq[HeapId]) extends JavaHeapObject(id,snapshot) {
 

@@ -19,11 +19,11 @@ class ObjectRootsPage(snapshot : Snapshot,query : String,includeWeak: Boolean) e
 
         html(title) {
           val refs = snapshot.rootsetReferencesTo(target, includeWeak).sortWith(SortUtil.sortByFn(
-              (l,r) => r.obj.getRoot.getType - l.obj.getRoot.getType,
-              (l,r) => l.depth - r.depth,
-              (l,r) => l.obj.getRoot.getDescription.compareTo(r.obj.getRoot.getDescription),
-              (l,r) => l.obj.getRoot.getReferencedItem.map { _.toString }.getOrElse("").compareTo(
-                r.obj.getRoot.getReferencedItem.map { _.toString }.getOrElse(""))))
+            (l,r) => r.obj.getRoot.get.getType - l.obj.getRoot.get.getType,
+            (l,r) => l.depth - r.depth,
+            (l,r) => l.obj.getRoot.get.getDescription.compareTo(r.obj.getRoot.get.getDescription),
+            (l,r) => l.obj.getRoot.get.getReferencedItem.map { _.toString }.getOrElse("").compareTo(
+              r.obj.getRoot.get.getReferencedItem.map { _.toString }.getOrElse(""))))
 
           out.print("<h1>References to ")
           printThing(target)
@@ -31,7 +31,7 @@ class ObjectRootsPage(snapshot : Snapshot,query : String,includeWeak: Boolean) e
           var lastType: Int = Root.INVALID_TYPE
           for (ref1 <- refs) {
             var ref: ReferenceChain = ref1
-            val root: Root = ref.obj.getRoot
+            val root: Root = ref.obj.getRoot.get
             if (root.getType != lastType) {
               lastType = root.getType
               h2(printEncoded(root.getTypeName + " References"))
