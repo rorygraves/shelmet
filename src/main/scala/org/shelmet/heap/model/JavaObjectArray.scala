@@ -17,6 +17,8 @@ class JavaObjectArray(id : HeapId,snapshot : Snapshot,classId: HeapId,elementIDs
     elements.size
   }
 
+  def displayName : String = getClazz.displayName
+
   override def visitReferencedObjects(visit : JavaHeapObject => Unit) {
     super.visitReferencedObjects(visit)
     for (element <- elements) {

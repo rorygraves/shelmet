@@ -28,6 +28,8 @@ object Snapshot extends Logging {
     logger.info("Parse step complete")
     logger.info("Snapshot read, resolving...")
     snapshot.resolve(calculateRefs)
+    logger.info("Calculating retained sized.")
+    snapshot.calculateDepths()
     logger.info("Snapshot resolved.")
     snapshot
   }
@@ -51,6 +53,34 @@ class Snapshot extends Logging {
   var identifierSize: Int = 8
   private var minimumObjectSize: Int = 0
   var creationDate : Option[Date] = None
+
+  def calculateDepths() {
+    var toVisit = Set[HeapId]()
+    var depth = 1
+    rootsMap.keys.foreach { o =>
+      o.addDepth(depth)
+      toVisit += o.heapId
+    }
+
+    while(toVisit.size > 0) {
+      var nextToVisit = Set[HeapId]()
+      depth += 1
+      toVisit.foreach { hId =>
+        hId.getOpt(this).foreach { obj =>
+          obj.visitReferencedObjects({ r=>
+            val alreadySeen = r.minDepthToRoot != -1
+            obj.addDepth(depth)
+            if(!alreadySeen) {
+              nextToVisit += r.heapId
+            }
+          })
+        }
+      }
+      toVisit = nextToVisit
+    }
+
+
+  }
 
   def setSiteTrace(obj: JavaHeapObject, trace: Option[StackTrace]) {
     trace match {
@@ -100,28 +130,24 @@ class Snapshot extends Logging {
 
     javaLangClassLoader = findClassByName("java.lang.ClassLoader").getOrElse(throw new IllegalStateException("No java.lang.ClassLoader class"))
 
-    for (t <- heapObjects.values)
-      if (t.isInstanceOf[JavaClass])
+    // resolve class objects
+    for (t <- heapObjects.values if t.isInstanceOf[JavaClass])
         t.resolve(this)
 
-    for (t <- heapObjects.values
-      if !t.isInstanceOf[JavaClass])
+    // resolve non-class objects
+    for (t <- heapObjects.values if !t.isInstanceOf[JavaClass])
         t.resolve(this)
+
+    // TODO Determine if we actually want to do this - it hugely alters the counts of java.lang.Object
+//    // resolve unknown heap objects
+//    for (t <- heapObjects.values if t.isInstanceOf[UnknownHeapObject])
+//      t.resolve(this)
 
     weakReferenceClass = findClassByName("java.lang.ref.Reference").getOrElse(throw new IllegalStateException("No java.lang.ref.Reference"))
     referentFieldIndex = weakReferenceClass.getFieldsForInstance.indexWhere(_.name == "referent")
 
-    if (calculateRefs) {
+    if (calculateRefs)
       calculateReferencesToObjects()
-      logger.info("Eliminating duplicate references")
-      var count: Int = 0
-      for (t <- heapObjects.values) {
-        count += 1
-        if (calculateRefs && count % DOT_LIMIT == 0) {
-          logger.info(".")
-        }
-      }
-    }
   }
 
   private def calculateReferencesToObjects() {

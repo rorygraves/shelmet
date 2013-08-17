@@ -1,6 +1,5 @@
 package org.shelmet.heap.model.create
 
-import org.shelmet.heap.parser._
 import org.shelmet.heap.model._
 import org.shelmet.heap.HeapId
 

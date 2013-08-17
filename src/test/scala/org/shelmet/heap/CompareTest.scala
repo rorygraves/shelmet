@@ -127,7 +127,7 @@ class CompareTest extends FunSuite with Logging with BeforeAndAfterAll {
     testPage("object","http://localhost:8080/object/0x7f4554d90")
   }
 
-  test("Render Object page (java.lang.String") {
+  test("Render Object page (java.lang.String)") {
     testPage("objectString","http://localhost:8080/object/0x7f45682a8")
   }
 
@@ -135,7 +135,7 @@ class CompareTest extends FunSuite with Logging with BeforeAndAfterAll {
     testPage("objectObjectArray","http://localhost:8080/object/0x7f44c0cb8")
   }
 
-  test("Render Object page (base type array)") {
+  test("Render Object page (int array)") {
     testPage("objectIntArray","http://localhost:8080/object/0x7f44e95e8")
   }
 

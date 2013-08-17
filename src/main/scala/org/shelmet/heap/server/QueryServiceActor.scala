@@ -21,11 +21,6 @@ trait QueryService extends HttpService with Logging {
 
   val snapshot: Snapshot
 
-  def showPath(req: HttpRequest) = LogEntry("Method = %s, Path = %s" format(req.method, req.uri), Logging.InfoLevel)
-
-  // we use the enclosing ActorContext's or ActorSystem's dispatcher for our Futures and Scheduler
-  implicit def executionContext = actorRefFactory.dispatcher
-
   val queryRoute = {
     respondWithMediaType(`text/html`) {
       // run each request in a separate thread

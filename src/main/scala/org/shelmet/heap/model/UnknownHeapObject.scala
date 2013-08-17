@@ -10,7 +10,6 @@ class UnknownHeapObject(id : HeapId,snapshot : Snapshot) extends JavaHeapObject(
 
   override def size: Int = 0
 
-  // TODO investigate - this is not covered by coverage implying its never called - bug?
   override def resolve(snapshot: Snapshot) {
     getClazz.addInstance(this)
   }

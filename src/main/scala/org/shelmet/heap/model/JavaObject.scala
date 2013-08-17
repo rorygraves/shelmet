@@ -9,6 +9,9 @@ import org.shelmet.heap.HeapId
 class JavaObject(id: HeapId, snapshotV: Snapshot,classId : HeapId,val fieldValues : Vector[Any],fieldsLength : Int)
   extends JavaHeapObject(id, snapshotV) {
 
+  var minDepth = -1
+  var maxDepth = -1
+
   override def getClazz: JavaClass = classId.getOpt(snapshot).get.asInstanceOf[JavaClass]
 
   override def size: Int = snapshot.getMinimumObjectSize + fieldsLength

@@ -15,7 +15,18 @@ abstract class JavaHeapObject(val heapId : HeapId,snapshotV : Snapshot) extends 
 
   private var referersSet: SortedSet[HeapId] = SortedSet.empty
 
-  def compare(that: JavaHeapObject): Int = heapId.compareTo(that.heapId)
+  var minDepthToRoot = -1
+  var maxDepthToRoot = -1
+
+  def addDepth(depth : Int) {
+    if(minDepthToRoot == -1 || minDepthToRoot > depth)
+      minDepthToRoot = depth
+
+    if(maxDepthToRoot == -1 || maxDepthToRoot < depth)
+      maxDepthToRoot = depth
+  }
+
+  override def compare(that: JavaHeapObject): Int = heapId.compareTo(that.heapId)
 
   def referers : SortedSet[JavaHeapObject] = referersSet.map(snapshot.findHeapObject(_).get)
 
