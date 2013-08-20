@@ -186,23 +186,24 @@ class JavaClass(snapshotV : Snapshot,
 
   override def size: Int = snapshot.getJavaLangClass.getInstanceSize
 
-  override def visitReferencedObjects(visit : JavaHeapObject => Unit) {
-    super.visitReferencedObjects(visit)
+  override def visitReferencedObjects(visit : JavaHeapObject => Unit,includeStatics : Boolean = true) {
+    super.visitReferencedObjects(visit,includeStatics)
     getSuperclass.foreach( visit(_) )
     loader.foreach( visit )
     getSigners.foreach( visit )
     getProtectionDomain.map( visit )
 
-    for (aStatic <- statics) {
-      val f = aStatic.field
-      if (f.isObjectField) {
-        val other = aStatic.getValue
-        other match {
-          case other1: JavaHeapObject => visit(other1)
-          case _ =>
+    if(includeStatics)
+      for (aStatic <- statics) {
+        val f = aStatic.field
+        if (f.isObjectField) {
+          val other = aStatic.getValue
+          other match {
+            case other1: JavaHeapObject => visit(other1)
+            case _ =>
+          }
         }
       }
-    }
   }
 
   private[model] def addInstance(inst: JavaHeapObject) {

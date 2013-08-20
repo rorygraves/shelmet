@@ -19,8 +19,8 @@ class JavaObjectArray(id : HeapId,snapshot : Snapshot,classId: HeapId,elementIDs
 
   def displayName : String = getClazz.displayName
 
-  override def visitReferencedObjects(visit : JavaHeapObject => Unit) {
-    super.visitReferencedObjects(visit)
+  override def visitReferencedObjects(visit : JavaHeapObject => Unit,includeStatics : Boolean = true) {
+    super.visitReferencedObjects(visit,includeStatics)
     for (element <- elements) {
       element match {
         case jho : JavaHeapObject =>

@@ -43,7 +43,7 @@ class Snapshot extends Logging {
   var roots: List[Root] = Nil
   private var classes = SortedMap[String, JavaClass]()
   private var siteTraces = Map[JavaHeapObject, StackTrace]()
-  private var rootsMap = Map[JavaHeapObject, Root]()
+  private var rootsMap = Map[JavaHeapObject, Set[Root]]()
   private var finalizablesCache: SoftReference[List[JavaHeapObject]] = null
   var weakReferenceClass: JavaClass = null
   var referentFieldIndex: Int = 0
@@ -55,28 +55,34 @@ class Snapshot extends Logging {
   var creationDate : Option[Date] = None
 
   def calculateDepths() {
+
+    // 0x7f44c0e60 target
+    // ref 1 = // 34163396192 / 0x7f44c0e60 // static ref
+    // ref 2 = // 34274118752 / 0x7fae58c60 - class java.util.Property
+    // ref 2 = // 34163403016 / 0x7f44c2908 = java.util.Hashtable$Entry[]
+
     var toVisit = Set[HeapId]()
-    var depth = 1
-    rootsMap.keys.foreach { o =>
-      o.addDepth(depth)
-      toVisit += o.heapId
+    rootsMap.foreach { case (k,v) =>
+      k.addDepth(1)
+      toVisit += k.heapId
     }
 
+    var depth = 1
     while(toVisit.size > 0) {
       var nextToVisit = Set[HeapId]()
-      depth += 1
       toVisit.foreach { hId =>
         hId.getOpt(this).foreach { obj =>
-          obj.visitReferencedObjects({ r=>
+          obj.visitReferencedObjects({ r =>
             val alreadySeen = r.minDepthToRoot != -1
             obj.addDepth(depth)
             if(!alreadySeen) {
               nextToVisit += r.heapId
             }
-          })
+          },false)
         }
       }
       toVisit = nextToVisit
+      depth += 1
     }
 
 
@@ -154,7 +160,7 @@ class Snapshot extends Logging {
     logger.info("Chasing references, expect " + heapObjects.size / DOT_LIMIT + " dots")
     var count: Int = 0
     for (t <- heapObjects.values) {
-      t.visitReferencedObjects( _.addReferenceFrom(t))
+      t.visitReferencedObjects(_.addReferenceFrom(t))
       count += 1
       if (count % DOT_LIMIT == 0)
         logger.info(".")
@@ -221,18 +227,19 @@ class Snapshot extends Logging {
     finalizablesC
   }
 
-  def rootsetReferencesTo(target: JavaHeapObject, includeWeak: Boolean): List[ReferenceChain] = {
+  def rootsetReferencesTo(target: JavaHeapObject, includeWeak: Boolean): List[CompleteReferenceChain] = {
     val fifo = ListBuffer[ReferenceChain]()
     var visited = SortedSet[JavaHeapObject]()
-    var result = List[ReferenceChain]()
+    var result = List[CompleteReferenceChain]()
     visited += target
 
     fifo += new ReferenceChain(target, null)
     while (fifo.size > 0) {
       val chain: ReferenceChain = fifo.remove(0)
       val curr: JavaHeapObject = chain.obj
-      if (curr.getRoot.isDefined)
-        result = chain :: result
+      curr.getRootReferences.foreach { root =>
+        result = new CompleteReferenceChain(root,chain) :: result
+      }
 
       curr.referers.foreach {
         t =>
@@ -247,14 +254,11 @@ class Snapshot extends Logging {
     result
   }
 
-  private[model] def addReferenceFromRoot(r: Root, obj: JavaHeapObject) {
-    rootsMap.get(obj) match {
-      case Some(root) => root.mostInteresting(r)
-      case None => rootsMap += (obj -> r)
-    }
+  private[model] def addReferenceFromRoot(root: Root, obj: JavaHeapObject) {
+    rootsMap += obj -> (rootsMap.getOrElse(obj,Set.empty) + root)
   }
 
-  private[model] def getRoot(obj: JavaHeapObject): Option[Root] = rootsMap.get(obj)
+  private[model] def getRoots(obj: JavaHeapObject): Set[Root] = rootsMap.getOrElse(obj,Set.empty)
 
   private[model] def getJavaLangClass: JavaClass = javaLangClass
 

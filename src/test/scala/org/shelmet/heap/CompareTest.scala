@@ -171,6 +171,9 @@ class CompareTest extends FunSuite with Logging with BeforeAndAfterAll {
     testPage("class2","http://localhost:8080/object/0x7faea2a30")
   }
 
+  test("Render Object page (unknown object)") {
+    testPage("objectPageUnknownObject","http://localhost:8080/object/0x7fae21c38")
+  }
   test("Render Object page (not found)") {
     testPage("classNotFound","http://localhost:8080/object/0xfffffff")
   }

@@ -22,11 +22,7 @@ class JavaObject(id: HeapId, snapshotV: Snapshot,classId : HeapId,val fieldValue
   }
 
   private def resolvedFields = fieldValues.map( _ match {
-    case id : HeapId =>
-        if(id.isNull)
-          null
-        else
-          snapshot.findHeapObject(id).get
+    case id : HeapId => id.getOpt.getOrElse(null)
     case x => x
   })
 
@@ -39,8 +35,8 @@ class JavaObject(id: HeapId, snapshotV: Snapshot,classId : HeapId,val fieldValue
       throw new IllegalStateException("Field " + name + " not found on class " + getClazz.displayName))._2
   }
 
-  override def visitReferencedObjects(visit : JavaHeapObject => Unit) {
-    super.visitReferencedObjects(visit)
+  override def visitReferencedObjects(visit : JavaHeapObject => Unit,includeStatics : Boolean = true) {
+    super.visitReferencedObjects(visit,includeStatics)
 
     fieldValues.foreach {
       case h : HeapId if !h.isNull=> visit(h.getOpt.get)

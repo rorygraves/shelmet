@@ -64,7 +64,7 @@ abstract class JavaHeapObject(val heapId : HeapId,snapshotV : Snapshot) extends 
   /**
    * Tell the visitor about all of the objects we refer to
    */
-  def visitReferencedObjects(visit : JavaHeapObject => Unit) {
+  def visitReferencedObjects(visit : JavaHeapObject => Unit,includeStatics : Boolean = true) {
     visit(getClazz)
   }
 
@@ -73,10 +73,9 @@ abstract class JavaHeapObject(val heapId : HeapId,snapshotV : Snapshot) extends 
   }
 
   /**
-   * If the rootset includes this object, return a Root describing one
-   * of the reasons why.
+   * Return the set of root references to this object.
    */
-  def getRoot: Option[Root] = snapshot.getRoot(this)
+  def getRootReferences: Set[Root] = snapshot.getRoots(this)
 
   /**
    * Given other, which the caller promises is in referers, determines if

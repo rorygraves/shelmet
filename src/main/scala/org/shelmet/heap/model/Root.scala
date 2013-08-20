@@ -43,6 +43,9 @@ class Root(snapshot : Snapshot,val valueHeapId: HeapId, refererId: HeapId, val r
       description
   }
 
+  override def toString = getDescription + refererId.getOpt.map(f => " from " + f.toString).getOrElse("")
+  //+ stackTrace.map( s => s.toString).getOrElse("")
+
   /**
    * Return type.  We guarantee that more interesting roots will have
    * a type that is numerically higher.

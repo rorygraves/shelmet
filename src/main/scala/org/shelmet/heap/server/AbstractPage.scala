@@ -19,8 +19,16 @@ abstract class AbstractPage(snapshot : Snapshot) {
     if (query.startsWith("0x")) {
       val id = HeapId(Misc.parseHex(query))
       snapshot.findThing(id,createIfMissing = false)
-    } else
-      snapshot.findClassByName(query)
+    } else {
+      try {
+        val idVal = query.toLong
+        val id = HeapId(idVal)
+        snapshot.findThing(id,createIfMissing = false)
+      } catch {
+        case  nfe : NumberFormatException =>
+          snapshot.findClassByName(query)
+      }
+    }
   }
 
   def table( c : => Unit ) {

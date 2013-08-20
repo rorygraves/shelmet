@@ -31,12 +31,11 @@ class ObjectPage(snapshot : Snapshot,query : String) extends AbstractPage(snapsh
       basicObjectTable(unknown) {
 
       }
-
+      outputRootRefs(unknown)
       printEncoded(unknown.toString)
       printReferencesTo(unknown)
     }
   }
-
 
   def renderClass(clazz : JavaClass) {
     val name = s"class ${clazz.createDisplayName} (${clazz.heapId.toHex})"
@@ -92,6 +91,7 @@ class ObjectPage(snapshot : Snapshot,query : String) extends AbstractPage(snapsh
             else
               out.println(s"""<a href="#staticFields">$staticFieldsCount</a>""")}
         }
+
       }
 
       if(subclassCount > 0) {
@@ -112,6 +112,8 @@ class ObjectPage(snapshot : Snapshot,query : String) extends AbstractPage(snapsh
         ul(staticFields,printStatic)
       }
 
+      outputRootRefs(clazz)
+
       val instanceCountWithSub = clazz.getInstancesCount(includeSubclasses = true)
 
       h2(s"Instances ($instanceCountWithSub)")
@@ -126,12 +128,28 @@ class ObjectPage(snapshot : Snapshot,query : String) extends AbstractPage(snapsh
         }
       }
 
+
+
       out.println("<br/>")
       h2("References summary by Type")
       printAnchor("refsByType/" + encodeForURL(clazz),"References summary by type")
       printReferencesTo(clazz)
     }
   }
+
+  def outputRootRefs(obj : JavaHeapObject) {
+    val rootRefs: Set[Root] = obj.getRootReferences
+    val rootRefCounts = rootRefs.size
+
+    if(rootRefCounts > 0) {
+      pageAnchor("rootRefs")
+      h2("RootRefs:")
+      ul(rootRefs,{
+        r : Root => out.println(r.toString)
+      })
+    }
+  }
+
 
   def renderObject(obj : JavaObject) {
     html(s"instance of ${obj.getClazz.name} (${obj.heapId.toHex})") {
@@ -170,6 +188,8 @@ class ObjectPage(snapshot : Snapshot,query : String) extends AbstractPage(snapsh
           printThing(thing)
           out.println("<br/>")
       }
+
+      outputRootRefs(obj)
       printAllocationSite(obj)
       printReferencesTo(obj)
     }
@@ -182,6 +202,8 @@ class ObjectPage(snapshot : Snapshot,query : String) extends AbstractPage(snapsh
 
       }
 
+      outputRootRefs(array)
+
       printEncoded(array.valueString(bigLimit = true))
       printAllocationSite(array)
       printReferencesTo(array)
@@ -189,14 +211,33 @@ class ObjectPage(snapshot : Snapshot,query : String) extends AbstractPage(snapsh
   }
 
   def renderObjectArray(objArray : JavaObjectArray) {
-    html(s"insetance of ${objArray.displayName} (${objArray.heapId.toHex})") {
-      printFullObjectArray(objArray)
+    html(s"instance of ${objArray.displayName} (${objArray.heapId.toHex})") {
+      val elements = objArray.elements.zipWithIndex
+      out.println("<h1>Array of " + elements.size + " objects</h1>")
+
+      basicObjectTable(objArray) {
+        // TODO ELEMENT Class
+      }
+
+      h2("Values")
+      elements foreach { case (item,idx) =>
+        out.print("" + idx + " : ")
+        printThing(item)
+        out.println("<br/>")
+      }
+
+      outputRootRefs(objArray)
       printAllocationSite(objArray)
       printReferencesTo(objArray)
     }
   }
 
+
   def basicObjectTable(obj : JavaHeapObject)( c : => Unit ) {
+
+    val rootRefs: Set[Root] = obj.getRootReferences
+    val rootRefCounts = rootRefs.size
+
     table {
       tableRow {
         tableData(out.println("<b>Instance of:</b>"))
@@ -206,30 +247,23 @@ class ObjectPage(snapshot : Snapshot,query : String) extends AbstractPage(snapsh
         tableData(out.println("<b>Size</b>"))
         tableData(out.println(s"""${obj.size} bytes"""))
       }
-      //      tableRow {
-      //        tableData(out.println("<b>Min/max distance to root</b>"))
-      //        tableData(out.println(s"""${obj.minDepthToRoot}/${obj.maxDepthToRoot}"""))
-      //      }
+//      tableRow {
+//        tableData(out.println("<b>Min/max distance to root</b>"))
+//        tableData(out.println(s"""${obj.minDepthToRoot}/${obj.maxDepthToRoot}"""))
+//      }
       c
+
+      tableRow {
+        tableData { out.println("<b>Root References</b>") }
+        tableData {
+          if(rootRefCounts == 0)
+            out.println("None")
+          else
+            out.println(s"""<a href="#rootRefs">$rootRefCounts</a>""")}
+      }
     }
   }
 
-
-  private def printFullObjectArray(arr: JavaObjectArray) {
-    val elements = arr.elements.zipWithIndex
-    out.println("<h1>Array of " + elements.size + " objects</h1>")
-
-    basicObjectTable(arr) {
-      // TODO ELEMENT Class
-    }
-
-    h2("Values")
-    elements foreach { case (item,idx) =>
-      out.print("" + idx + " : ")
-      printThing(item)
-      out.println("<br/>")
-    }
-  }
 
   private def printAllocationSite(obj: JavaHeapObject) {
     obj.getAllocatedFrom match {

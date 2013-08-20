@@ -1,8 +1,9 @@
 package org.shelmet.heap.server
 
-import org.shelmet.heap.model.{Snapshot, JavaHeapObject, ReferenceChain, Root}
-import org.shelmet.heap.HeapId
+import org.shelmet.heap.model._
 import org.shelmet.heap.util.SortUtil
+import org.shelmet.heap.HeapId
+import scala.Some
 
 class ObjectRootsPage(snapshot : Snapshot,query : String,includeWeak: Boolean) extends AbstractPage(snapshot) {
 
@@ -19,19 +20,19 @@ class ObjectRootsPage(snapshot : Snapshot,query : String,includeWeak: Boolean) e
 
         html(title) {
           val refs = snapshot.rootsetReferencesTo(target, includeWeak).sortWith(SortUtil.sortByFn(
-            (l,r) => r.obj.getRoot.get.getType - l.obj.getRoot.get.getType,
+            (l,r) => r.root.getType - l.root.getType,
             (l,r) => l.depth - r.depth,
-            (l,r) => l.obj.getRoot.get.getDescription.compareTo(r.obj.getRoot.get.getDescription),
-            (l,r) => l.obj.getRoot.get.getReferencedItem.map { _.toString }.getOrElse("").compareTo(
-              r.obj.getRoot.get.getReferencedItem.map { _.toString }.getOrElse(""))))
+            (l,r) => l.root.getDescription.compareTo(r.root.getDescription),
+            (l,r) => l.root.getReferencedItem.map { _.toString }.getOrElse("").compareTo(
+              r.root.getReferencedItem.map { _.toString }.getOrElse("")),
+            (l,r) => l.root.index.compareTo(r.root.index)))
 
           out.print("<h1>References to ")
           printThing(target)
           out.println("</h1>")
           var lastType: Int = Root.INVALID_TYPE
-          for (ref1 <- refs) {
-            var ref: ReferenceChain = ref1
-            val root: Root = ref.obj.getRoot.get
+          for (reference <- refs) {
+            val root: Root = reference.root
             if (root.getType != lastType) {
               lastType = root.getType
               h2(printEncoded(root.getTypeName + " References"))
@@ -44,6 +45,7 @@ class ObjectRootsPage(snapshot : Snapshot,query : String,includeWeak: Boolean) e
               out.print(")</small>")
             }
             out.print(" :</h3>")
+            var ref: ReferenceChain = reference.chain
             while (ref != null) {
               val next: ReferenceChain = ref.next
               val obj: JavaHeapObject = ref.obj
