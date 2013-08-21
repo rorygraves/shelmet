@@ -56,33 +56,30 @@ class Snapshot extends Logging {
 
   def calculateDepths() {
 
-    // 0x7f44c0e60 target
-    // ref 1 = // 34163396192 / 0x7f44c0e60 // static ref
-    // ref 2 = // 34274118752 / 0x7fae58c60 - class java.util.Property
-    // ref 2 = // 34163403016 / 0x7f44c2908 = java.util.Hashtable$Entry[]
+    var visited = Set[HeapId]()
 
+    var depth = 1
     var toVisit = Set[HeapId]()
     rootsMap.foreach { case (k,v) =>
-      k.addDepth(1)
+      k.addDepth(depth)
       toVisit += k.heapId
     }
 
-    var depth = 1
     while(toVisit.size > 0) {
+      depth += 1
       var nextToVisit = Set[HeapId]()
       toVisit.foreach { hId =>
+        visited += hId
         hId.getOpt(this).foreach { obj =>
           obj.visitReferencedObjects({ r =>
-            val alreadySeen = r.minDepthToRoot != -1
-            obj.addDepth(depth)
-            if(!alreadySeen) {
+            r.addDepth(depth)
+            if(!visited.contains(r.heapId)) {
               nextToVisit += r.heapId
             }
           },false)
         }
       }
       toVisit = nextToVisit
-      depth += 1
     }
 
 

@@ -217,5 +217,4 @@ class CompareTest extends FunSuite with Logging with BeforeAndAfterAll {
   test("Render RefsByType page (missing object)") {
     testPage("refsByTypeMissing","http://localhost:8080/refsByType/0x7f44c0019")
   }
-
 }

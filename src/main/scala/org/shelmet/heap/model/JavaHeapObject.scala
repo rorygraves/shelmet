@@ -19,10 +19,10 @@ abstract class JavaHeapObject(val heapId : HeapId,snapshotV : Snapshot) extends 
   var maxDepthToRoot = -1
 
   def addDepth(depth : Int) {
-    if(minDepthToRoot == -1 || minDepthToRoot > depth)
+    if(minDepthToRoot == -1 || depth < minDepthToRoot)
       minDepthToRoot = depth
 
-    if(maxDepthToRoot == -1 || maxDepthToRoot < depth)
+    if(maxDepthToRoot == -1 || depth > maxDepthToRoot)
       maxDepthToRoot = depth
   }
 
