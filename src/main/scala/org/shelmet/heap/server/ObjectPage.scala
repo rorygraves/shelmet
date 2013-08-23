@@ -37,7 +37,7 @@ class ObjectPage(snapshot : Snapshot,query : String) extends AbstractPage(snapsh
   }
 
   def renderClass(clazz : JavaClass) {
-    val name = s"class ${clazz.createDisplayName} (${clazz.heapId.toHex})"
+    val name = s"class ${clazz.displayName} (${clazz.heapId.toHex})"
     html(name) {
 
       val subClasses = clazz.getSubclasses
@@ -111,7 +111,6 @@ class ObjectPage(snapshot : Snapshot,query : String) extends AbstractPage(snapsh
           ul(staticFields,printStatic)
         }
 
-
         val instanceCountWithSub = clazz.getInstancesCount(includeSubclasses = true)
         h2(s"Instances ($instanceCountWithSub)")
         if(instanceCountWithSub != 0) {
@@ -151,22 +150,28 @@ class ObjectPage(snapshot : Snapshot,query : String) extends AbstractPage(snapsh
           case _ =>
         }
 
-        h2("Instance data members:")
+        h2("Instance Fields:")
         val fieldsAndValues = obj.getFieldsAndValues
 
         val set = fieldsAndValues.sortWith {
           case ((lhsField,lhsThing),(rhsField,rhsThing)) =>
             lhsField.longName.compareTo(rhsField.longName) < 0
         }
-
-        set foreach {
-          case (field,thing) =>
-            printField(field)
-            out.print(" : ")
-            printThing(thing)
-            out.println("<br/>")
+        table {
+          tableRow {
+            tableHeader("Field")
+            tableHeader("Type")
+            tableHeader("Value")
+          }
+          set foreach {
+            case (field,value) =>
+              tableRow {
+                tableData(field.longName)
+                tableData(field.fieldType.typeName)
+                tableData(printThing(value))
+              }
+          }
         }
-
       }
     }
   }

@@ -7,6 +7,9 @@ import scala.collection.mutable.ListBuffer
 import org.shelmet.heap.HeapId
 import com.typesafe.scalalogging.slf4j.Logging
 import java.util.Date
+import org.shelmet.heap.model._
+import scala.Some
+import org.shelmet.heap.HeapId
 
 /**
  * Object that's used to read a hprof file.
@@ -48,17 +51,17 @@ object HprofReader extends Logging {
   private val HPROF_HEAP_DUMP_END: Int = 0x2c
   private val T_CLASS: Int = 2
 
-  def signatureFromTypeId(typeId: Byte): Char = {
+  def signatureFromTypeId(typeId: Byte): FieldType = {
     typeId match {
-      case T_CLASS => 'L'
-      case T_BOOLEAN => 'Z'
-      case T_CHAR => 'C'
-      case T_FLOAT => 'F'
-      case T_DOUBLE => 'D'
-      case T_BYTE => 'B'
-      case T_SHORT => 'S'
-      case T_INT => 'I'
-      case T_LONG => 'J'
+      case T_CLASS => ObjectFieldType
+      case T_BOOLEAN => BooleanFieldType
+      case T_CHAR => CharFieldType
+      case T_FLOAT => FloatFieldType
+      case T_DOUBLE => DoubleFieldType
+      case T_BYTE => ByteFieldType
+      case T_SHORT => ShortFieldType
+      case T_INT => IntFieldType
+      case T_LONG => LongFieldType
       case _ =>
         throw new IOException("Invalid type id of " + typeId)
     }
@@ -70,7 +73,7 @@ class HprofReader(fileName: String) extends Logging {
   import HprofReader._
   def readFile(dumpVisitor : DumpVisitor) {
 
-    val in = new PositionDataInputStream(new BufferedInputStream(new FileInputStream(new File(fileName))))
+    val in = PositionDataInputStream(new BufferedInputStream(new FileInputStream(new File(fileName))))
     try {
       // read the first 4 bytes
       if(in.readInt() != MAGIC_NUMBER)
@@ -233,7 +236,7 @@ class HprofReader(fileName: String) extends Logging {
             val itemType = HprofReader.signatureFromTypeId(itemTypeRaw)
 
             val value = readValueForType(reader,itemTypeRaw)
-            new ClassStaticEntry(nameId,itemType.toChar,value)
+            new ClassStaticEntry(nameId,itemType,value)
           }).toList
 
           val numFields: Int = reader.readUnsignedShort
@@ -250,17 +253,20 @@ class HprofReader(fileName: String) extends Logging {
           val id = reader.readHeapId
           val stackTraceSerialId = reader.readInt
           val classID = reader.readHeapId
-          val bytesFollowing = reader.readInt
-          val fieldValues = reader.readBytes(bytesFollowing)
-          val fieldSigs = dumpVisitor.getClassFieldInfo(classID)
+          val fieldDataBlockSize = reader.readInt
+          val rawFieldData = reader.readBytes(fieldDataBlockSize)
 
-          val blockReader = new BlockDataReader(fieldValues,identifierSize)
+          val dataReader = new DataReader(PositionDataInputStream(new ByteArrayInputStream(rawFieldData)),identifierSize)
+
+          // we can only read the fields if the dump visitor is able to supply the class field information
+          // this typically comes from an earlier pass.
+          val fieldSigs = dumpVisitor.getClassFieldInfo(classID)
           val fields = fieldSigs match {
-            case Some(sigs : List[String]) => Some(readInstanceFieldsFields(sigs,blockReader.getReader))
+            case Some(sigs : List[FieldType]) => Some(readInstanceFieldsFields(sigs,dataReader))
             case None => None
           }
 
-          dumpVisitor.instanceDump(id,stackTraceSerialId,classID,fields,blockReader.length)
+          dumpVisitor.instanceDump(id,stackTraceSerialId,classID,fields,fieldDataBlockSize)
         case HPROF_GC_OBJ_ARRAY_DUMP =>
           val id = reader.readHeapId
           val stackTraceSerialId = reader.readInt
@@ -303,46 +309,22 @@ class HprofReader(fileName: String) extends Logging {
     readValueForTypeSignature(reader,itemType)
   }
 
-
-  def readInstanceFieldsFields(signatures : List[String],fieldReader : DataReader) : Vector[Any] = {
-    signatures.map { signature =>
-      val sig = signature.charAt(0)
-
-      sig match {
-        case 'L' | '[' =>
-          val id = fieldReader.readHeapId
-          id
-        case 'Z' => fieldReader.readBoolean
-        case 'B' => fieldReader.readByte
-        case 'S' => fieldReader.readShort
-        case 'C' => fieldReader.readChar
-        case 'I' => fieldReader.readInt
-        case 'J' => fieldReader.readLong
-        case 'F' => fieldReader.readFloat
-        case 'D' => fieldReader.readDouble
-        case _ =>
-          throw new RuntimeException("invalid signature: " + sig)
-      }
-    }.toVector
+  def readValueForTypeSignature(reader : DataReader,fieldType : FieldType)  = {
+    fieldType match {
+      case ObjectFieldType => HeapId(reader.readID)
+      case BooleanFieldType => reader.readBoolean
+      case ByteFieldType => reader.readByte
+      case ShortFieldType => reader.readShort
+      case CharFieldType => reader.readChar
+      case IntFieldType => reader.readInt
+      case LongFieldType => reader.readLong
+      case FloatFieldType => reader.readFloat
+      case DoubleFieldType => reader.readDouble
+    }
   }
 
-
-  private def readValueForTypeSignature(reader : DataReader,itemType: Char) : Any = {
-    itemType match {
-      case '[' | 'L' =>
-        val id = reader.readID
-        HeapId(id)
-      case 'Z' => reader.readBoolean
-      case 'B' => reader.readByte
-      case 'S' => reader.readShort
-      case 'C' => reader.readChar
-      case 'I' => reader.readInt
-      case 'J' => reader.readLong
-      case 'F' => reader.readFloat
-      case 'D' => reader.readDouble
-      case _ =>
-        throw new IOException("Bad value signature:  " + itemType)
-    }
+  def readInstanceFieldsFields(signatures : List[FieldType],fieldReader : DataReader) : Vector[Any] = {
+    signatures.map(readValueForTypeSignature(fieldReader,_)).toVector
   }
 
   private def readPrimitiveArray(reader : DataReader,dumpVisitor : DumpVisitor) {

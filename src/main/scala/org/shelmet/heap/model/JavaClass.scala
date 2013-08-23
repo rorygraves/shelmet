@@ -1,6 +1,7 @@
 package org.shelmet.heap.model
 
 import org.shelmet.heap.HeapId
+import org.shelmet.heap.util.DisplayUtil
 
 class JavaClass(snapshotV : Snapshot,
                 heapId: HeapId,
@@ -101,34 +102,7 @@ class JavaClass(snapshotV : Snapshot,
     }
   }
 
-  def createDisplayName : String = {
-    // -1 for none == 0, [ = 1 [[ = 2
-    val lastBkt = name.lastIndexOf('[')
-    val arrayBkts = lastBkt + 1
-
-    if(lastBkt == -1)
-      prettifyShortName(name)
-    else {
-      prettifyShortName(name.substring(lastBkt+1)) + (0 until arrayBkts).map(_ => "[]").mkString
-    }
-  }
-
-  def prettifyShortName(shortName : String) : String =  {
-    shortName.charAt(0) match {
-      case 'B' => "byte"
-      case 'Z' => "boolean"
-      case 'S' => "short"
-      case 'C' => "char"
-      case 'I' => "int"
-      case 'J' => "long"
-      case 'F' => "float"
-      case 'D' => "double"
-      case 'L' => shortName.substring(1,shortName.length -1)
-      case _ => shortName
-    }
-
-  }
-  lazy val displayName : String = createDisplayName
+  lazy val displayName : String = DisplayUtil.prettifyClassName(name)
   override def toString: String = "class " + displayName
 
   /**

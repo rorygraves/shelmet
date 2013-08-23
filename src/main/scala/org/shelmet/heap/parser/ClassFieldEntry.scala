@@ -1,3 +1,5 @@
 package org.shelmet.heap.parser
 
-class ClassFieldEntry(val nameId : Long,val itemType : Char)
+import org.shelmet.heap.model.FieldType
+
+class ClassFieldEntry(val nameId : Long,val itemType : FieldType)

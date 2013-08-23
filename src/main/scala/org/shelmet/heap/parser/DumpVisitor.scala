@@ -2,6 +2,7 @@ package org.shelmet.heap.parser
 
 import org.shelmet.heap.HeapId
 import java.util.Date
+import org.shelmet.heap.model.FieldType
 
 trait DumpVisitor {
   def creationDate(date : Date) {}
@@ -21,7 +22,7 @@ trait DumpVisitor {
   /** Given a heap id of a class object return the signatures for that object
     * @return a list of field signatures
     */
-  def getClassFieldInfo(classHeapId : HeapId) : Option[List[String]]  = { None }
+  def getClassFieldInfo(classHeapId : HeapId) : Option[List[FieldType]]  = None
 
   def classDump(id : HeapId,stackTraceSerialId : Int,
                 superClassId : HeapId,

@@ -104,44 +104,336 @@
 </td>
 </tr>
 </table>
-<h2>Instance data members:</h2>
-java.net.PlainSocketImpl.CONNECTION_NOT_RESET (I) : 0<br/>
-java.net.PlainSocketImpl.CONNECTION_RESET (I) : 2<br/>
-java.net.PlainSocketImpl.CONNECTION_RESET_PENDING (I) : 1<br/>
-java.net.PlainSocketImpl.anyLocalBoundAddr (L) : <a href="/object/0x7f4555a30">java.net.Inet4Address@0x7f4555a30 (32 bytes)</a>
-<br/>
-java.net.PlainSocketImpl.closePending (Z) : false<br/>
-java.net.PlainSocketImpl.fd1 (L) : &lt;null&gt;<br/>
-java.net.PlainSocketImpl.fdLock (L) : <a href="/object/0x7f4554e30">java.lang.Object@0x7f4554e30 (16 bytes)</a>
-<br/>
-java.net.PlainSocketImpl.fdUseCount (I) : 1<br/>
-java.net.PlainSocketImpl.lastfd (I) : -1<br/>
-java.net.PlainSocketImpl.resetLock (L) : <a href="/object/0x7f4554e48">java.lang.Object@0x7f4554e48 (16 bytes)</a>
-<br/>
-java.net.PlainSocketImpl.resetState (I) : 0<br/>
-java.net.PlainSocketImpl.shut_rd (Z) : false<br/>
-java.net.PlainSocketImpl.shut_wr (Z) : false<br/>
-java.net.PlainSocketImpl.socketInputStream (L) : &lt;null&gt;<br/>
-java.net.PlainSocketImpl.stream (Z) : true<br/>
-java.net.PlainSocketImpl.timeout (I) : 0<br/>
-java.net.PlainSocketImpl.trafficClass (I) : 0<br/>
-java.net.SocketImpl.address (L) : <a href="/object/0x7f4555a30">java.net.Inet4Address@0x7f4555a30 (32 bytes)</a>
-<br/>
-java.net.SocketImpl.fd (L) : <a href="/object/0x7f4555a60">java.io.FileDescriptor@0x7f4555a60 (28 bytes)</a>
-<br/>
-java.net.SocketImpl.localport (I) : 7532<br/>
-java.net.SocketImpl.port (I) : 0<br/>
-java.net.SocketImpl.serverSocket (L) : <a href="/object/0x7f4554a00">java.net.ServerSocket@0x7f4554a00 (36 bytes)</a>
-<br/>
-java.net.SocketImpl.socket (L) : &lt;null&gt;<br/>
-java.net.SocksSocketImpl.applicationSetProxy (Z) : false<br/>
-java.net.SocksSocketImpl.cmdIn (L) : &lt;null&gt;<br/>
-java.net.SocksSocketImpl.cmdOut (L) : &lt;null&gt;<br/>
-java.net.SocksSocketImpl.cmdsock (L) : &lt;null&gt;<br/>
-java.net.SocksSocketImpl.external_address (L) : &lt;null&gt;<br/>
-java.net.SocksSocketImpl.port (I) : 1080<br/>
-java.net.SocksSocketImpl.server (L) : &lt;null&gt;<br/>
-java.net.SocksSocketImpl.useV4 (Z) : false<br/>
+<h2>Instance Fields:</h2>
+<table class="table table-bordered table-condensed">
+<tr>
+<th>
+Field
+</th>
+<th>
+Type
+</th>
+<th>
+Value
+</th>
+</tr>
+<tr>
+<td>
+java.net.PlainSocketImpl.CONNECTION_NOT_RESET
+</td>
+<td>
+int
+</td>
+<td>
+0</td>
+</tr>
+<tr>
+<td>
+java.net.PlainSocketImpl.CONNECTION_RESET
+</td>
+<td>
+int
+</td>
+<td>
+2</td>
+</tr>
+<tr>
+<td>
+java.net.PlainSocketImpl.CONNECTION_RESET_PENDING
+</td>
+<td>
+int
+</td>
+<td>
+1</td>
+</tr>
+<tr>
+<td>
+java.net.PlainSocketImpl.anyLocalBoundAddr
+</td>
+<td>
+object
+</td>
+<td>
+<a href="/object/0x7f4555a30">java.net.Inet4Address@0x7f4555a30 (32 bytes)</a>
+</td>
+</tr>
+<tr>
+<td>
+java.net.PlainSocketImpl.closePending
+</td>
+<td>
+boolean
+</td>
+<td>
+false</td>
+</tr>
+<tr>
+<td>
+java.net.PlainSocketImpl.fd1
+</td>
+<td>
+object
+</td>
+<td>
+&lt;null&gt;</td>
+</tr>
+<tr>
+<td>
+java.net.PlainSocketImpl.fdLock
+</td>
+<td>
+object
+</td>
+<td>
+<a href="/object/0x7f4554e30">java.lang.Object@0x7f4554e30 (16 bytes)</a>
+</td>
+</tr>
+<tr>
+<td>
+java.net.PlainSocketImpl.fdUseCount
+</td>
+<td>
+int
+</td>
+<td>
+1</td>
+</tr>
+<tr>
+<td>
+java.net.PlainSocketImpl.lastfd
+</td>
+<td>
+int
+</td>
+<td>
+-1</td>
+</tr>
+<tr>
+<td>
+java.net.PlainSocketImpl.resetLock
+</td>
+<td>
+object
+</td>
+<td>
+<a href="/object/0x7f4554e48">java.lang.Object@0x7f4554e48 (16 bytes)</a>
+</td>
+</tr>
+<tr>
+<td>
+java.net.PlainSocketImpl.resetState
+</td>
+<td>
+int
+</td>
+<td>
+0</td>
+</tr>
+<tr>
+<td>
+java.net.PlainSocketImpl.shut_rd
+</td>
+<td>
+boolean
+</td>
+<td>
+false</td>
+</tr>
+<tr>
+<td>
+java.net.PlainSocketImpl.shut_wr
+</td>
+<td>
+boolean
+</td>
+<td>
+false</td>
+</tr>
+<tr>
+<td>
+java.net.PlainSocketImpl.socketInputStream
+</td>
+<td>
+object
+</td>
+<td>
+&lt;null&gt;</td>
+</tr>
+<tr>
+<td>
+java.net.PlainSocketImpl.stream
+</td>
+<td>
+boolean
+</td>
+<td>
+true</td>
+</tr>
+<tr>
+<td>
+java.net.PlainSocketImpl.timeout
+</td>
+<td>
+int
+</td>
+<td>
+0</td>
+</tr>
+<tr>
+<td>
+java.net.PlainSocketImpl.trafficClass
+</td>
+<td>
+int
+</td>
+<td>
+0</td>
+</tr>
+<tr>
+<td>
+java.net.SocketImpl.address
+</td>
+<td>
+object
+</td>
+<td>
+<a href="/object/0x7f4555a30">java.net.Inet4Address@0x7f4555a30 (32 bytes)</a>
+</td>
+</tr>
+<tr>
+<td>
+java.net.SocketImpl.fd
+</td>
+<td>
+object
+</td>
+<td>
+<a href="/object/0x7f4555a60">java.io.FileDescriptor@0x7f4555a60 (28 bytes)</a>
+</td>
+</tr>
+<tr>
+<td>
+java.net.SocketImpl.localport
+</td>
+<td>
+int
+</td>
+<td>
+7532</td>
+</tr>
+<tr>
+<td>
+java.net.SocketImpl.port
+</td>
+<td>
+int
+</td>
+<td>
+0</td>
+</tr>
+<tr>
+<td>
+java.net.SocketImpl.serverSocket
+</td>
+<td>
+object
+</td>
+<td>
+<a href="/object/0x7f4554a00">java.net.ServerSocket@0x7f4554a00 (36 bytes)</a>
+</td>
+</tr>
+<tr>
+<td>
+java.net.SocketImpl.socket
+</td>
+<td>
+object
+</td>
+<td>
+&lt;null&gt;</td>
+</tr>
+<tr>
+<td>
+java.net.SocksSocketImpl.applicationSetProxy
+</td>
+<td>
+boolean
+</td>
+<td>
+false</td>
+</tr>
+<tr>
+<td>
+java.net.SocksSocketImpl.cmdIn
+</td>
+<td>
+object
+</td>
+<td>
+&lt;null&gt;</td>
+</tr>
+<tr>
+<td>
+java.net.SocksSocketImpl.cmdOut
+</td>
+<td>
+object
+</td>
+<td>
+&lt;null&gt;</td>
+</tr>
+<tr>
+<td>
+java.net.SocksSocketImpl.cmdsock
+</td>
+<td>
+object
+</td>
+<td>
+&lt;null&gt;</td>
+</tr>
+<tr>
+<td>
+java.net.SocksSocketImpl.external_address
+</td>
+<td>
+object
+</td>
+<td>
+&lt;null&gt;</td>
+</tr>
+<tr>
+<td>
+java.net.SocksSocketImpl.port
+</td>
+<td>
+int
+</td>
+<td>
+1080</td>
+</tr>
+<tr>
+<td>
+java.net.SocksSocketImpl.server
+</td>
+<td>
+object
+</td>
+<td>
+&lt;null&gt;</td>
+</tr>
+<tr>
+<td>
+java.net.SocksSocketImpl.useV4
+</td>
+<td>
+boolean
+</td>
+<td>
+false</td>
+</tr>
+</table>
 <a name="rootRefs"></a>
 <h2>Root References:</h2>
 <ul>

@@ -15,10 +15,10 @@ class ObjectPassDumpVisitor(snapshot : Snapshot,callStack: Boolean) extends Abst
     snapshot.setSiteTrace(va, stackTrace)
   }
 
-  override def getClassFieldInfo(classHeapId : HeapId) : Option[List[String]] = {
+  override def getClassFieldInfo(classHeapId : HeapId) : Option[List[FieldType]] = {
     snapshot.findHeapObject(classHeapId) match {
-      case Some(clazz : JavaClass) => Some(clazz.getFieldsForInstance.map(_.signature))
-      case Some(other : JavaHeapObject) => throw new IllegalStateException("Requested classid " + classHeapId + "not correct type")
+      case Some(clazz : JavaClass) => Some(clazz.getFieldsForInstance.map(_.fieldType))
+      case Some(other : JavaHeapObject) => throw new IllegalStateException("Requested class id " + classHeapId + "not correct type")
       case None => None
     }
   }

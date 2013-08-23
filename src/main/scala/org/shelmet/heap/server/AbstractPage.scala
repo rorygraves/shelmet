@@ -44,23 +44,24 @@ abstract class AbstractPage(snapshot : Snapshot) {
   }
 
   def ul[A](values : Iterable[A],f : A=>Unit) {
-    out.println("<ul>")
-    values foreach { a =>
-      out.println("<li>")
-      f(a)
-      out.println("</li>")
-    }
-
-    out.println("</ul>")
+    tagPair("ul",{
+      values foreach { a =>
+        tagPair("li",f(a))
+      }
+    })
   }
 
   def tableData( s : String ) { tableData(out.println(s)) }
 
-  def tableData( c : => Unit ) {
-    out.println("<td>")
-    c
-    out.println("</td>")
+  private def tagPair(token : String,f : => Unit)  {
+    out.println(s"<$token>")
+    f
+    out.println(s"</$token>")
   }
+
+  def tableHeader(text : String ) { tagPair("th",out.println(text)) }
+
+  def tableData( c : => Unit ) { tagPair("td",c) }
 
   protected def html(title : String )( c : => Unit ) {
     startHtml(title)
@@ -217,7 +218,7 @@ abstract class AbstractPage(snapshot : Snapshot) {
   protected def encodeForURL(clazz: JavaClass): String = clazz.getIdString
 
   protected def printField(field: JavaField) {
-    printEncoded(field.longName + " (" + field.signature + ")")
+    printEncoded(field.longName + " (" + field.fieldType.typeChar + ")")
   }
 
   protected def printStatic(member: JavaStatic) {
