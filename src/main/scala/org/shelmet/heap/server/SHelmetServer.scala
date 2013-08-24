@@ -34,7 +34,7 @@ class SHelmetServer private (port: Int, snapshot: Snapshot) extends Logging {
   def start() : Option[Int] = {
     system = ActorSystem("shelmet")
     val service = system.actorOf(Props(new QueryServiceActor(snapshot)), "web-service")
-    logger.info("")
+    logger.info("Initialising web server")
     val res = Patterns.ask(IO(Http),Http.Bind(service, "localhost", port),5000)
     Await.result(res,5 seconds) match {
       case f : CommandFailed =>

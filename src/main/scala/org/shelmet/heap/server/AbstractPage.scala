@@ -218,7 +218,7 @@ abstract class AbstractPage(snapshot : Snapshot) {
   protected def encodeForURL(clazz: JavaClass): String = clazz.getIdString
 
   protected def printField(field: JavaField) {
-    printEncoded(field.longName + " (" + field.fieldType.typeChar + ")")
+    printEncoded(field.longName + " (" + field.fieldType.typeName + ")")
   }
 
   protected def printStatic(member: JavaStatic) {
