@@ -193,6 +193,10 @@ class ObjectPage(snapshot : Snapshot,query : String) extends AbstractPage(snapsh
       out.println("<h1>Array of " + elements.size + " objects</h1>")
 
       basicObjectRender(objArray) {
+//        tableRow {
+//          tableData { out.println("<b>Element type:</b>") }
+//          tableData { printThing(objArray.clazz.getProtectionDomain.getOrElse(null)) }
+//        }
         // TODO Add ELEMENT Class
       } {
         h2("Values")
@@ -229,8 +233,8 @@ class ObjectPage(snapshot : Snapshot,query : String) extends AbstractPage(snapsh
         tableData(out.println("<b>Size</b>"))
         tableData(out.println(s"${obj.size} bytes"))
       }
-      tableContent
 
+      tableContent
 
       tableRow {
         tableData(out.println("<b>Min/max distance to root</b>"))

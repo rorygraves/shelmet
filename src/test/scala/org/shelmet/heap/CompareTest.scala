@@ -139,6 +139,18 @@ class CompareTest extends FunSuite with Logging with BeforeAndAfterAll {
     testPage("objectIntArray","http://localhost:8080/object/0x7f44e95e8")
   }
 
+  test("Render Object page (boolean array)") {
+    testPage("objectBooleanArray","http://localhost:8080/object/0x7f450fbd8")
+  }
+
+  test("Render Object page (byte array)") {
+    testPage("objectByteArray","http://localhost:8080/object/0x7f44f2870")
+  }
+
+  test("Render Object page (long byte array)") {
+    testPage("objectByteArrayLong","http://localhost:8080/object/0x7f44ec3b8")
+  }
+
   test("Render RootStack page") {
     testPage("rootStack","http://localhost:8080/rootStack/0x1")
   }

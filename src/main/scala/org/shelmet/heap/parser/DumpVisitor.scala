@@ -2,7 +2,7 @@ package org.shelmet.heap.parser
 
 import org.shelmet.heap.HeapId
 import java.util.Date
-import org.shelmet.heap.model.FieldType
+import org.shelmet.heap.shared.FieldType
 
 trait DumpVisitor {
   def creationDate(date : Date) {}
@@ -34,11 +34,11 @@ trait DumpVisitor {
                 staticItems : List[ClassStaticEntry],
                 fieldItems : List[ClassFieldEntry]) {}
   def instanceDump(id : HeapId,stackTraceSerialId : Int,classId : HeapId,fields : Option[Vector[Any]],fieldsLengthBytes : Int) {}
-  def objectArrayDump(id : HeapId,stackTraceSerialId : Int,numElements : Int,elementClassId : HeapId,elementIDs : Seq[HeapId]) {}
+  def objectArrayDump(id : HeapId,stackTraceSerialId : Int,numElements : Int,classId : HeapId,elementIDs : Seq[HeapId]) {}
   def unloadClass(classSerialNo : Int) {}
   def heapDumpEnd() {}
   def heapSummary(totalLiveBytes : Int,totalLiveInstances : Int,totalBytesAllocated : Long,totalInstancesAllocated : Long) {}
   def stackFrame(id : Long,methodNameId : Long,methodSigId : Long,sourceFileNameId : Long,classSerialId : Int,lineNo : Int) {}
   def stackTrace(serialNo : Int,threadSerialNo : Int,frameIDs : Vector[Long]) {}
-  def primitiveArray(id : HeapId,stackTraceSerialID : Int,primitiveSignature : Byte,elementSize : Int,data : AnyRef) {}
+  def primitiveArray(heapId : HeapId,stackTraceSerialID : Int,fieldType : FieldType,elementSize : Int,data : Seq[AnyVal]) {}
 }

@@ -1,31 +1,26 @@
 package org.shelmet.heap.util
 
+import org.shelmet.heap.shared.{ObjectFieldType, FieldType}
+
 object DisplayUtil {
   def prettifyClassName(sig : String) : String = {
-    // -1 for none == 0, [ = 1 [[ = 2
-    val lastBkt = sig.lastIndexOf('[')
-    val arrayBkts = lastBkt + 1
+    // classname examples
+    // [[I
+    // [Lcom.foo.Bar;
+    // com.foo.Bar
 
-    if(lastBkt == -1)
-      prettifyShortName(sig)
-    else {
-      prettifyShortName(sig.substring(lastBkt+1)) + (0 until arrayBkts).map(_ => "[]").mkString
-    }
-  }
-
-  def prettifyShortName(sig : String) : String =  {
-    sig.charAt(0) match {
-      case 'B' => "byte"
-      case 'Z' => "boolean"
-      case 'S' => "short"
-      case 'C' => "char"
-      case 'I' => "int"
-      case 'J' => "long"
-      case 'F' => "float"
-      case 'D' => "double"
-      // TODO This is definately wrong - any class name with an L at the start (we get unencoded names atm)
-      case 'L' => sig.drop(1).dropRight(1)
-      case _ => sig //throw new IllegalStateException("shortName")
-    }
+    if(sig.contains('[')) {
+      val brackets = sig.takeWhile(c=> c == '[')
+      val typePart = sig.drop(brackets.size)
+      val typeChar = typePart(0)
+      val fieldType = FieldType.fromJVMChar(typeChar)
+      val shortName = fieldType match {
+        case ObjectFieldType => typePart.drop(1).dropRight(1)
+        case x => x.typeName
+      }
+      println(s"sig = $sig. Shortname = $shortName  brackets=$brackets")
+      shortName + brackets.map(x=> "[]").mkString
+    } else
+      sig
   }
 }

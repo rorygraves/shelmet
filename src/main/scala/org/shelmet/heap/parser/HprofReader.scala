@@ -4,10 +4,9 @@ import org.shelmet.heap.util.Misc
 import java.io._
 import ArrayTypeCodes._
 import scala.collection.mutable.ListBuffer
-import org.shelmet.heap.HeapId
 import com.typesafe.scalalogging.slf4j.Logging
 import java.util.Date
-import org.shelmet.heap.model._
+import org.shelmet.heap.shared._
 import scala.Some
 import org.shelmet.heap.HeapId
 
@@ -51,7 +50,7 @@ object HprofReader extends Logging {
   private val HPROF_HEAP_DUMP_END: Int = 0x2c
   private val T_CLASS: Int = 2
 
-  def signatureFromTypeId(typeId: Byte): FieldType = {
+  def fieldTypeFromTypeId(typeId: Byte): FieldType = {
     typeId match {
       case T_CLASS => ObjectFieldType
       case T_BOOLEAN => BooleanFieldType
@@ -233,7 +232,7 @@ class HprofReader(fileName: String) extends Logging {
           val staticItems = (for ( k <- 1 to numStatics) yield {
             val nameId = reader.readID
             val itemTypeRaw = reader.readByte
-            val itemType = HprofReader.signatureFromTypeId(itemTypeRaw)
+            val itemType = HprofReader.fieldTypeFromTypeId(itemTypeRaw)
 
             val value = readValueForType(reader,itemTypeRaw)
             new ClassStaticEntry(nameId,itemType,value)
@@ -243,7 +242,7 @@ class HprofReader(fileName: String) extends Logging {
           val fieldItems = (for (j <- 1 to  numFields) yield {
             val nameId = reader.readID
             val itemTypeByte = reader.readByte
-            val itemType = HprofReader.signatureFromTypeId(itemTypeByte)
+            val itemType = HprofReader.fieldTypeFromTypeId(itemTypeByte)
             new ClassFieldEntry(nameId,itemType)
           }).toList
 
@@ -304,7 +303,7 @@ class HprofReader(fileName: String) extends Logging {
   }
 
   def readValueForType(reader : DataReader,itemTypeInit: Byte) : Any = {
-    val itemType = signatureFromTypeId(itemTypeInit)
+    val itemType = fieldTypeFromTypeId(itemTypeInit)
 
     readValueForTypeSignature(reader,itemType)
   }
@@ -332,31 +331,28 @@ class HprofReader(fileName: String) extends Logging {
     val stackTraceSerialID = reader.readInt
     val numElements = reader.readInt
 
-    val elementClassID : Int = reader.readByte
+    val elementClassID : Byte = reader.readByte
+    val fieldType = fieldTypeFromTypeId(elementClassID) match {
+      case ObjectFieldType =>
+        throw new IllegalStateException("Primitive array type cannot object type")
+      case t : BaseFieldType => t
+    }
 
-    val (primitiveSignature,elementSize,data) = readPrimativeArray(reader,numElements,elementClassID)
+    val data = readPrimativeArray(reader,numElements,fieldType)
 
-    dumpVisitor.primitiveArray(id,stackTraceSerialID,primitiveSignature.asInstanceOf[Byte],elementSize,data)
+    dumpVisitor.primitiveArray(id,stackTraceSerialID,fieldType,fieldType.fieldSize,data)
   }
 
-  def readPrimativeArray(reader : DataReader,numElements : Int,elementClassID : Int): (Char,Int,AnyRef) = {
-    elementClassID match {
-      case T_BOOLEAN =>
-        ('Z',1,(for(i <- 0 until numElements) yield reader.readBoolean ).toArray)
-      case T_BYTE =>
-        ('B',1,(for(i <- 0 until numElements) yield reader.readByte ).toArray)
-      case T_CHAR =>
-        ('C',2,(for(i <- 0 until numElements) yield reader.readChar ) .toArray)
-      case T_SHORT =>
-        ('S',2,(for(i <- 0 until numElements) yield reader.readShort ) .toArray)
-      case T_INT =>
-        ('I',4,(for(i <- 0 until numElements) yield reader.readInt ) .toArray)
-      case T_LONG =>
-        ('J',8,(for(i <- 0 until numElements) yield reader.readLong ) .toArray)
-      case T_FLOAT =>
-        ('F',4,(for(i <- 0 until numElements) yield reader.readFloat ) .toArray)
-      case T_DOUBLE =>
-        ('D',8,(for(i <- 0 until numElements) yield reader.readDouble ) .toArray)
+  def readPrimativeArray(reader : DataReader,numElements : Int,fieldType : FieldType): Seq[AnyVal] = {
+    for(i <- 0 until numElements)  yield fieldType match {
+      case BooleanFieldType => reader.readBoolean
+      case ByteFieldType => reader.readByte
+      case CharFieldType => reader.readChar
+      case ShortFieldType => reader.readShort
+      case IntFieldType => reader.readInt
+      case LongFieldType => reader.readLong
+      case FloatFieldType => reader.readFloat
+      case DoubleFieldType => reader.readDouble
       case _ =>
         throw new RuntimeException("unknown primitive type?")
     }

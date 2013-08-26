@@ -1,5 +1,8 @@
 SHelmet
 ======
+[![Build Status](https://travis-ci.org/rorygraves/shelmet.png)](https://travis-ci.org/rorygraves/shelmet)
+
+**Pull requests and bug reports always welcome**
 
 **Please note, this is a work in progress and we have a few more features to implement before packaging and release our first version**
 
@@ -19,14 +22,14 @@ Some issues:
 Immediate plans
 ---------------
 
-+ Memory Overflow to disk
-+ Modern web engine (Spray/Spray http)
-+ Improved layouts (Bootstrap + CSS)
-+ Dynamic loading?
-+ Retained size calculations
-+ Better display of scala/java collections classes
-+ A new query API based on scala repl
-+ Proper tests
+[X] Modern web engine (Spray/Spray http)
+[X] Improved layouts (Bootstrap + CSS)
+[ ] Memory Overflow to disk
+[ ] Dynamic loading?
+[ ] Retained size calculations
+[ ] Better display of scala/java collections classes
+[ ] A new query API based on scala repl
+[ ] Proper tests (code coverage about 90% right now)
 
 Installation
 ------------
@@ -34,7 +37,6 @@ Installation
 SHelmet is packaged as a standalone jar including all of its dependencies so simply download it and use it as below.
 
 [Download Area](https://github.com/rorygraves/shelmet/releases)
-
 
 Usage
 -----
