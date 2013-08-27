@@ -12,7 +12,7 @@ class ObjectPage(snapshot : Snapshot,query : String) extends AbstractPage(snapsh
           out.println("object not found")
         }
       case Some(jObject : JavaObject) =>
-        renderObject(jObject)
+        renderInstance(jObject)
       case Some(clazz : JavaClass) =>
         renderClass(clazz)
       case Some(array : JavaValueArray) =>
@@ -106,9 +106,27 @@ class ObjectPage(snapshot : Snapshot,query : String) extends AbstractPage(snapsh
         }
 
         if(staticFieldsCount > 0) {
+
           pageAnchor("staticFields")
           h2("Static Fields:")
-          ul(staticFields,printStatic)
+
+          table {
+            tableRow {
+              tableHeader("Field")
+              tableHeader("Type")
+              tableHeader("Value")
+            }
+            staticFields foreach {
+              case static =>
+                tableRow {
+                  tableData(static.field.longName)
+                  tableData(static.field.fieldType.typeName)
+                  tableData(printThing(static.getValue))
+                }
+            }
+          }
+//
+//          ul(,printStatic)
         }
 
         val instanceCountWithSub = clazz.getInstancesCount(includeSubclasses = true)
@@ -129,7 +147,7 @@ class ObjectPage(snapshot : Snapshot,query : String) extends AbstractPage(snapsh
     }
   }
 
-  def renderObject(obj : JavaObject) {
+  def renderInstance(obj : JavaObject) {
     html(s"instance of ${obj.getClazz.name} (${obj.heapId.toHex})") {
 
       basicObjectRender(obj) {

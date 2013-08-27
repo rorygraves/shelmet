@@ -11,6 +11,8 @@ object Main extends Logging {
   // TODO Planned - Dump comparisons (e.g. to detect leaks).
   // TODO Planned - Connect and take dump from within application
   // TODO Planned - Update/provide utilities to provide a better dump/easier to change
+  // TODO Ideas - Updates to use  /class/<classname>/<#instance> - i.e. similar to JVisualVM to improve links/display
+
 
   val PROGRAM_NAME = "SHelmet"
   val VERSION = "v0.1"

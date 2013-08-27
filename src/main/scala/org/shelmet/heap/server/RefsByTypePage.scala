@@ -61,7 +61,7 @@ class RefsByTypePage(snapshot : Snapshot,query : String) extends AbstractPage(sn
       for ((clazz,count) <- sortedPairs) {
         tableRow {
           tableData {
-            printAnchor("refsByType/" + clazz.getIdString,clazz.name)
+            printAnchor("refsByType/" + clazz.getIdString,clazz.displayName)
           }
           tableData(out.println(count))
         }
