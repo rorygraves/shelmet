@@ -20,7 +20,7 @@ class ObjectRootsPage(snapshot : Snapshot,query : String,includeWeak: Boolean) e
 
         html(title) {
           val refs = snapshot.rootsetReferencesTo(target, includeWeak).sortWith(SortUtil.sortByFn(
-            (l,r) => r.root.getType - l.root.getType,
+            (l,r) => r.root.rootType.sortOrder - l.root.rootType.sortOrder,
             (l,r) => l.depth - r.depth,
             (l,r) => l.root.getDescription.compareTo(r.root.getDescription),
             (l,r) => l.root.getReferencedItem.map { _.toString }.getOrElse("").compareTo(
@@ -30,11 +30,12 @@ class ObjectRootsPage(snapshot : Snapshot,query : String,includeWeak: Boolean) e
           out.print("<h1>References to ")
           printThing(target)
           out.println("</h1>")
-          var lastType: Int = Root.INVALID_TYPE
+          // TODO This is horrible - group and sort?
+          var lastType: Option[RootType] = None
           for (reference <- refs) {
             val root: Root = reference.root
-            if (root.getType != lastType) {
-              lastType = root.getType
+            if (Some(root.rootType) != lastType) {
+              lastType = Some(root.rootType)
               h2(printEncoded(root.getTypeName + " References"))
             }
             out.print("<h3>")

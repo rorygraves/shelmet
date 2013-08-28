@@ -111,6 +111,7 @@ class Snapshot extends Logging {
     heapObjects += (id -> ho)
   }
 
+  // TODO This is a horrible way to handle root ids - they should be assigned earlier
   def addRoot(r: Root) {
     r.index =roots.size
     roots ++= List(r)

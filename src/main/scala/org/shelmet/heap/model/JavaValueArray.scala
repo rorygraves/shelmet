@@ -14,7 +14,6 @@ class JavaValueArray(heapId: HeapId,snapshot : Snapshot,val instanceId : Instanc
   }
 
   def valueString(bigLimit: Boolean=true): String = {
-
     if (fieldType == CharFieldType)
       new String(data.asInstanceOf[Seq[Char]].toArray)
     else {

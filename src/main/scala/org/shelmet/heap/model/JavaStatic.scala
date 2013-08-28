@@ -11,7 +11,7 @@ class JavaStatic(val snapshot : Snapshot,val field: JavaField,private val value:
     value match {
       case heapRef : HeapId =>
         if (!clazz.loader.isDefined) {
-          snapshot.addRoot(new Root(snapshot,heapRef, clazz.heapId, Root.JAVA_STATIC,
+          snapshot.addRoot(new Root(snapshot,heapRef, Some(clazz.heapId), JavaStaticRootType,
             "Static reference from " + clazz.name + "." + field.name ))
         }
       case _ =>

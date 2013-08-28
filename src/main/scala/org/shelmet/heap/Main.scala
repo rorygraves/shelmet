@@ -4,6 +4,8 @@ import org.shelmet.heap.server.SHelmetServer
 import com.typesafe.scalalogging.slf4j.Logging
 
 object Main extends Logging {
+  // TODO Fixes - The classname handling is horrible - its string manipulation throughout - needs a proper type e.g. is I an int or a class named 'I'?
+  // TODO Planned - Updates to use  /class/<classname>/<#instance> - i.e. similar to JVisualVM to improve links/display
   // TODO Planned - Calculate retained sized
   // TODO Planned - Overflow dump to disk allowing examination of larger heaps
   // TODO Planned - An OQL equivalent using Scala and dynamic evaluation
@@ -11,7 +13,6 @@ object Main extends Logging {
   // TODO Planned - Dump comparisons (e.g. to detect leaks).
   // TODO Planned - Connect and take dump from within application
   // TODO Planned - Update/provide utilities to provide a better dump/easier to change
-  // TODO Ideas - Updates to use  /class/<classname>/<#instance> - i.e. similar to JVisualVM to improve links/display
 
 
   val PROGRAM_NAME = "SHelmet"

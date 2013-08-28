@@ -25,6 +25,7 @@ class JavaClass(snapshotV : Snapshot,
       name.substring(0, pos)
   }
 
+
   // all classes loaded by bootstrap loader are considered
   // platform classes.
   def isPlatformClass : Boolean = isBootstrap
