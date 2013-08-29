@@ -8,6 +8,7 @@ import org.shelmet.heap.model.create.{ObjectPassDumpVisitor, InitialPassDumpVisi
 import org.shelmet.heap.HeapId
 import com.typesafe.scalalogging.slf4j.Logging
 import java.util.Date
+import org.shelmet.heap.shared.BaseFieldType
 
 /**
  * Represents a snapshot of the Java objects in the VM at one instant.
@@ -260,8 +261,9 @@ class Snapshot extends Logging {
 
   private[model] def getJavaLangClass: JavaClass = javaLangClass
 
-  private[model] def getArrayClass(elementSignature: String): JavaClass = {
-    val className= "[" + elementSignature
+  private[model] def getPrimitiveArrayClass(elementType : BaseFieldType): JavaClass = {
+
+    val className= elementType.typeName + "[]"
     findClassByName(className).getOrElse(throw new IllegalStateException("Unable to resolve class " + className))
   }
 

@@ -1,7 +1,7 @@
 package org.shelmet.heap.model
 
 import org.shelmet.heap.HeapId
-import org.shelmet.heap.util.DisplayUtil
+import org.shelmet.heap.shared.ClassType
 
 class JavaClass(snapshotV : Snapshot,
                 heapId: HeapId,
@@ -16,13 +16,15 @@ class JavaClass(snapshotV : Snapshot,
                 ) extends JavaHeapObject(heapId,snapshotV) {
 
   def getPackage = {
-    val pos = name.lastIndexOf(".")
-    if (name.startsWith("["))
+    if (name.contains("["))
       "<Arrays>"
-    else if (pos == -1)
-      "<Default Package>"
-    else
-      name.substring(0, pos)
+    else {
+      val pos = name.lastIndexOf(".")
+      if (pos == -1)
+        "<Default Package>"
+      else
+        name.substring(0, pos)
+    }
   }
 
 
@@ -103,7 +105,7 @@ class JavaClass(snapshotV : Snapshot,
     }
   }
 
-  lazy val displayName : String = DisplayUtil.prettifyClassName(name)
+  lazy val displayName : String = ClassType.parse(name).toString
   override def toString: String = "class " + displayName
 
   /**
@@ -111,9 +113,11 @@ class JavaClass(snapshotV : Snapshot,
    *         of other
    */
   def isAssignableFrom(other: JavaClass): Boolean = {
-    if (this eq other) true
-    else if (other == null) false
-    else isAssignableFrom(other.getSuperclass.getOrElse(null))
+    assert(other != null)
+    if (this eq other)
+      true
+    else
+      other.getSuperclass.exists(this.isAssignableFrom)
   }
 
   /**

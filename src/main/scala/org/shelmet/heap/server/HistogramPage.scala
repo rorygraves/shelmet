@@ -15,10 +15,12 @@ class HistogramPage(snapshot : Snapshot,sortParam : String) extends AbstractPage
     val comparator2: ((JavaClass,Int,Long),(JavaClass,Int,Long)) => Boolean =
       sortParam match {
         case "count" =>
-          SortUtil.sortByFn((l, r) => r._2 - l._2)
+          SortUtil.sortByFn(
+            (l, r) => r._2 - l._2,
+            (l, r) => l._1.name.compareTo(r._1.name))
         case "class" =>
           SortUtil.sortByFn((l, r) => l._1.name.compareTo(r._1.name))
-        case _ =>
+        case _ => // total size
           SortUtil.sortByFn(
             (l, r) => (r._3 - l._3).toInt,
             (l, r) => l._1.name.compareTo(r._1.name))

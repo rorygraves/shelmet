@@ -340,7 +340,7 @@ class HprofReader(fileName: String) extends Logging {
 
     val data = readPrimativeArray(reader,numElements,fieldType)
 
-    dumpVisitor.primitiveArray(id,stackTraceSerialID,fieldType,fieldType.fieldSize,data)
+    dumpVisitor.primitiveArray(id,stackTraceSerialID,fieldType,data)
   }
 
   def readPrimativeArray(reader : DataReader,numElements : Int,fieldType : FieldType): Seq[AnyVal] = {

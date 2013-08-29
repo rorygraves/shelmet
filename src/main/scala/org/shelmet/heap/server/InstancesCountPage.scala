@@ -2,7 +2,7 @@ package org.shelmet.heap.server
 
 import org.shelmet.heap.model.{JavaClass, Snapshot}
 import org.shelmet.heap.util.SortUtil
-import scala.collection.{SortedSet, SortedMap}
+import scala.collection.SortedSet
 import scala.math.Ordering
 
 class InstancesCountPage(snapshot : Snapshot,excludePlatform: Boolean) extends AbstractPage(snapshot) {
@@ -12,13 +12,13 @@ class InstancesCountPage(snapshot : Snapshot,excludePlatform: Boolean) extends A
     else "Instance Counts for All Classes (including platform)"
 
     html(title) {
-      val sortfn = SortUtil.sortByFn[(JavaClass,Int)](
+      val sortFn = SortUtil.sortByFn[(JavaClass,Int)](
         (l,r)=>  r._2 - l._2,
         (l,r) => {
           val left = l._1.name
           val right = r._1.name
-          if (left.startsWith("[") != right.startsWith("[")) {
-            if (left.startsWith("["))
+          if (left.endsWith("]") != right.endsWith("]")) {
+            if (left.endsWith("]"))
               1
             else
               -1
@@ -37,7 +37,7 @@ class InstancesCountPage(snapshot : Snapshot,excludePlatform: Boolean) extends A
           ).map( c => (c,c.getInstancesCount(includeSubclasses = false)))
 
 
-        SortedSet.empty(Ordering fromLessThan sortfn) ++ classesAndC
+        SortedSet.empty(Ordering fromLessThan sortFn) ++ classesAndC
       }
 
       var totalSize: Long = 0

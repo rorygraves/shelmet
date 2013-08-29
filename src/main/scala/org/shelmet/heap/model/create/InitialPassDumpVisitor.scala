@@ -6,6 +6,7 @@ import scala.Some
 import org.shelmet.heap.parser.{ClassFieldEntry, ClassStaticEntry}
 import org.shelmet.heap.HeapId
 import java.util.Date
+import org.shelmet.heap.shared.ClassType
 
 object InitialPassDumpVisitor {
   class ThreadObject(val threadId: Long,val  stackSeq: Int)
@@ -83,12 +84,14 @@ class InitialPassDumpVisitor(snapshot : Snapshot,callStack: Boolean) extends Abs
                          staticItems : List[ClassStaticEntry],
                          fieldItems : List[ClassFieldEntry]) {
 
-    val className = classNameFromObjectID.get(id) match {
+    val classSig = classNameFromObjectID.get(id) match {
       case Some(n) => n
       case None =>
         logger.warn("Class name not found for {}",id.toHex)
         "unknown-name@" + id.toHex
     }
+
+    val className = ClassType.parse(classSig).toString
 
     val statics = staticItems.map { se =>
         val fieldName = getNameFromID(se.nameId)

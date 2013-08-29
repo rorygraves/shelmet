@@ -1,9 +1,9 @@
 package org.shelmet.heap.shared
 
 object FieldType {
-
   val entries = Set[FieldType](BooleanFieldType,ByteFieldType,ShortFieldType,CharFieldType,IntFieldType,
       LongFieldType,FloatFieldType,DoubleFieldType,ObjectFieldType)
+
   val typeCharToType : Map[Char,FieldType] = entries.map(f => (f.jvmTypeChar,f)).toMap
 
   def fromJVMChar(jvmTypeChar : Char) : FieldType = {

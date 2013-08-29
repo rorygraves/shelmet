@@ -2,7 +2,7 @@ package org.shelmet.heap.parser
 
 import org.shelmet.heap.HeapId
 import java.util.Date
-import org.shelmet.heap.shared.FieldType
+import org.shelmet.heap.shared.{BaseFieldType, FieldType}
 
 trait DumpVisitor {
   def creationDate(date : Date) {}
@@ -40,5 +40,5 @@ trait DumpVisitor {
   def heapSummary(totalLiveBytes : Int,totalLiveInstances : Int,totalBytesAllocated : Long,totalInstancesAllocated : Long) {}
   def stackFrame(id : Long,methodNameId : Long,methodSigId : Long,sourceFileNameId : Long,classSerialId : Int,lineNo : Int) {}
   def stackTrace(serialNo : Int,threadSerialNo : Int,frameIDs : Vector[Long]) {}
-  def primitiveArray(heapId : HeapId,stackTraceSerialID : Int,fieldType : FieldType,elementSize : Int,data : Seq[AnyVal]) {}
-}
+  def primitiveArray(heapId : HeapId,stackTraceSerialID : Int,fieldType : BaseFieldType,data : Seq[AnyVal]) {}
+  }

@@ -2,14 +2,14 @@ package org.shelmet.heap.model.create
 
 import org.shelmet.heap.model._
 import org.shelmet.heap.HeapId
-import org.shelmet.heap.shared.FieldType
+import org.shelmet.heap.shared.{BaseFieldType, FieldType}
 
 class ObjectPassDumpVisitor(snapshot : Snapshot,callStack: Boolean) extends AbstractDumpVisitor(callStack) {
 
-  override def primitiveArray(heapId : HeapId,stackTraceSerialID : Int,fieldType : FieldType,elementSize : Int,data : Seq[AnyVal]) {
-    val objectSize = snapshot.getMinimumObjectSize + elementSize * data.size
+  override def primitiveArray(heapId : HeapId,stackTraceSerialID : Int,fieldType : BaseFieldType,data : Seq[AnyVal]) {
+    val objectSize = snapshot.getMinimumObjectSize + fieldType.fieldSize * data.size
 
-    val classId = snapshot.getArrayClass("" + fieldType.jvmTypeChar).heapId
+    val classId = snapshot.getPrimitiveArrayClass(fieldType).heapId
     val instanceId = getInstanceId(classId)
 
     val va = new JavaValueArray(heapId,snapshot,instanceId,classId,objectSize,fieldType,data)
