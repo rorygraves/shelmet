@@ -13,8 +13,14 @@ abstract class JavaHeapObject(val heapId : HeapId,snapshotV : Snapshot) extends 
 
   implicit val snapshot : Snapshot = snapshotV
 
-  private var referersSet: SortedSet[HeapId] = SortedSet.empty
+  var referersSet: SortedSet[HeapId] = SortedSet.empty
 
+  var retainedCalculated = false
+  var retaining : Long = 0
+
+  var dominator : Dominator = UnknownDominator
+
+  def retainedSize = size + retaining
   var minDepthToRoot = -1
   var maxDepthToRoot = -1
 
@@ -29,6 +35,8 @@ abstract class JavaHeapObject(val heapId : HeapId,snapshotV : Snapshot) extends 
   override def compare(that: JavaHeapObject): Int = heapId.compareTo(that.heapId)
 
   def referers : SortedSet[JavaHeapObject] = referersSet.map(snapshot.findHeapObject(_).get)
+
+  def noRefers = referersSet.size
 
   private[model] def addReferenceFrom(other: JavaHeapObject) {
     referersSet += other.heapId
@@ -81,7 +89,7 @@ abstract class JavaHeapObject(val heapId : HeapId,snapshotV : Snapshot) extends 
    * Given other, which the caller promises is in referers, determines if
    * the reference is only a weak reference.
    */
-  def refersOnlyWeaklyTo(ss: Snapshot, other: JavaHeapObject): Boolean = false
+  def refersOnlyWeaklyTo(other: JavaHeapObject): Boolean = false
 
   /**
    * Describe the reference that this thing has to target.  This will only

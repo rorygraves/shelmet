@@ -44,6 +44,23 @@ class HomepagePage(snapshot: Snapshot) extends AbstractPage(snapshot) {
           }
         }
       }
+
+
+      val top10 = snapshot.allObjects.toList.sortBy(-_.retainedSize).take(10)
+      h2("Largest 10 objects by retained size")
+      table {
+        tableRow {
+          tableHeader("Object")
+          tableHeader("Retained Size")
+        }
+
+        top10 foreach { obj =>
+          tableRow {
+            tableData(printThing(obj))
+            tableData(s"${obj.retainedSize}")
+          }
+        }
+      }
     }
   }
 }

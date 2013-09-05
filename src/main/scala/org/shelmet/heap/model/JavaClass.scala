@@ -56,6 +56,9 @@ class JavaClass(snapshotV : Snapshot,
     getSuperclass.map( _.addSubClass(this))
   }
 
+
+  lazy val instanceRetained : Long = getInstances(false).map(_.retainedSize).sum
+
   private var instanceRefs : Set[HeapId] = Set.empty
 
   private var subclassRefs : Set[HeapId] = Set.empty
@@ -86,7 +89,10 @@ class JavaClass(snapshotV : Snapshot,
    * @return a count of the instances of this class
    */
   def getInstancesCount(includeSubclasses: Boolean): Int = {
-    getInstances(includeSubclasses).size
+    if(includeSubclasses == false)
+      instanceRefs.size
+    else
+      getInstances(includeSubclasses).size
   }
 
   def getSubclasses: Set[JavaClass] = subclassRefs.map(_.getOpt.get.asInstanceOf[JavaClass])

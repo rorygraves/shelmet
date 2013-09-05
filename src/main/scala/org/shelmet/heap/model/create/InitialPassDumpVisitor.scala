@@ -6,7 +6,7 @@ import scala.Some
 import org.shelmet.heap.parser.{ClassFieldEntry, ClassStaticEntry}
 import org.shelmet.heap.HeapId
 import java.util.Date
-import org.shelmet.heap.shared.ClassType
+import org.shelmet.heap.shared.{BaseFieldType, ClassType}
 
 object InitialPassDumpVisitor {
   class ThreadObject(val threadId: Long,val  stackSeq: Int)
@@ -15,6 +15,9 @@ object InitialPassDumpVisitor {
 class InitialPassDumpVisitor(snapshot : Snapshot,callStack: Boolean) extends AbstractDumpVisitor(callStack) {
 
   import InitialPassDumpVisitor._
+
+  var classCount = 0
+  var objectCount = 0
 
   private var threadObjects = Map[Int, ThreadObject]()
 
@@ -83,7 +86,7 @@ class InitialPassDumpVisitor(snapshot : Snapshot,callStack: Boolean) extends Abs
                          constPoolEntries : Map[Int,Any],
                          staticItems : List[ClassStaticEntry],
                          fieldItems : List[ClassFieldEntry]) {
-
+    classCount += 1
     val classSig = classNameFromObjectID.get(id) match {
       case Some(n) => n
       case None =>
@@ -111,4 +114,18 @@ class InitialPassDumpVisitor(snapshot : Snapshot,callStack: Boolean) extends Abs
     snapshot.addClass(id, c)
     snapshot.setSiteTrace(c, stackTrace)
   }
+
+  override def instanceDump(id : HeapId,stackTraceSerialId : Int,classId : HeapId,fields : Option[Vector[Any]],fieldsLengthBytes : Int) {
+    objectCount +=1
+  }
+
+  override def objectArrayDump(id : HeapId,stackTraceSerialId : Int,numElements : Int,classId : HeapId,elementIDs : Seq[HeapId]) {
+    objectCount += 1
+  }
+
+  override def primitiveArray(heapId : HeapId,stackTraceSerialID : Int,fieldType : BaseFieldType,data : Seq[AnyVal]) {
+    objectCount += 1
+  }
+
+
 }

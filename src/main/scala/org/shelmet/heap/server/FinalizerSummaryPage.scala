@@ -24,7 +24,7 @@ class FinalizerSummaryPage(snapshot : Snapshot) extends AbstractPage(snapshot) {
       out.println("<b><a href='/'>All Classes (excluding platform)</a></b>")
       out.println("</p>")
       val objects = snapshot.getFinalizerObjects
-      printFinalizerSummary(objects)
+      printFinalizerSummary(objects.map(_.getOpt(snapshot).get))
     }
   }
 

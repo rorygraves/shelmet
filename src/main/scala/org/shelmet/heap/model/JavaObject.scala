@@ -44,10 +44,19 @@ class JavaObject(id: HeapId, snapshotV: Snapshot,classId : HeapId,val fieldValue
     }
   }
 
-  override def refersOnlyWeaklyTo(ss: Snapshot, other: JavaHeapObject): Boolean = {
-    if (ss.weakReferenceClass != null && ss.weakReferenceClass.isAssignableFrom(getClazz)) {
-      val referentFieldIndex = ss.referentFieldIndex
-      !fieldValues.zipWithIndex.exists { case (value,idx) => value == other.heapId && !(idx == referentFieldIndex) }
+  lazy val isWeakRefClazz : Boolean = snapshot.weakReferenceClass != null && snapshot.weakReferenceClass.isAssignableFrom(getClazz)
+
+  override def refersOnlyWeaklyTo(other: JavaHeapObject): Boolean = {
+    if (isWeakRefClazz) {
+      val referentFieldIndex = snapshot.referentFieldIndex
+      val size = fieldValues.size
+      var idx = 0
+      while(idx < size) {
+        if(fieldValues(idx) == other.heapId && !(idx == referentFieldIndex))
+          return false
+        idx += 1
+      }
+      true
     }
     else
       false

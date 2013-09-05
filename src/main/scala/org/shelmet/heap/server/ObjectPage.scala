@@ -252,11 +252,21 @@ class ObjectPage(snapshot : Snapshot,query : String) extends AbstractPage(snapsh
         tableData(out.println(s"${obj.size} bytes"))
       }
 
+      tableRow {
+        tableData(out.println("<b>Retained Size</b>"))
+        tableData(out.println(s"${obj.retainedSize} bytes"))
+      }
+
       tableContent
 
       tableRow {
         tableData(out.println("<b>Min/max distance to root</b>"))
         tableData(out.println(s"""${obj.minDepthToRoot}/${obj.maxDepthToRoot}"""))
+      }
+
+      tableRow {
+        tableData(out.println("<b>Dominator</b>"))
+        tableData(out.println(s"""${obj.dominator}"""))
       }
 
       tableRow {
@@ -326,7 +336,7 @@ class ObjectPage(snapshot : Snapshot,query : String) extends AbstractPage(snapsh
   }
 
   def outputRootRefs(obj : JavaHeapObject) {
-    val rootRefs: Set[Root] = obj.getRootReferences
+    val rootRefs = obj.getRootReferences.toList.sortBy(_.toString)
     val rootRefCounts = rootRefs.size
 
     if(rootRefCounts > 0) {

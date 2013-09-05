@@ -31,14 +31,26 @@ class HistogramPage(snapshot : Snapshot,sortParam : String) extends AbstractPage
 
     html("Heap Histogram") {
       table {
-        out.println("""<tr><th><a href="/histogram/class">Class</a></th>""")
-        out.println("""<th><a href="/histogram/count">Instance Count</a></th>""")
-        out.println("""<th><a href="/histogram/size">Total Size</a></th></tr>""")
+        tableRow {
+          out.println("""<th><a href="/histogram/class">Class</a></th>""")
+          out.println("""<th><a href="/histogram/count">Instance Count</a></th>""")
+          out.println("""<th><a href="/histogram/size">Total Size</a></th>""")
+          out.println("""<th>Size retained by instances</th>""")
+          out.println("""<th>Avg instance retained size</th>""")
+        }
+
         for (clazz <- classItems) {
           tableRow {
             tableData(printClass(clazz._1))
             tableData(out.println(clazz._2))
             tableData(out.println(clazz._3))
+            val instanceRetained = clazz._1.instanceRetained
+            tableData("" + instanceRetained)
+            val instanceCount = clazz._1.getInstancesCount(false)
+            val retainedInstSize = if(instanceCount == 0) "-"
+            else if(instanceRetained == 0) "0"
+            else "" + instanceRetained/instanceCount
+            tableData("" + retainedInstSize)
           }
         }
       }

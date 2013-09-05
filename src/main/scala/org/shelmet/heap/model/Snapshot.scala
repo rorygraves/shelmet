@@ -9,6 +9,8 @@ import org.shelmet.heap.HeapId
 import com.typesafe.scalalogging.slf4j.Logging
 import java.util.Date
 import org.shelmet.heap.shared.BaseFieldType
+import scala.math.Ordering
+import org.shelmet.heap.util.SortUtil
 
 /**
  * Represents a snapshot of the Java objects in the VM at one instant.
@@ -23,15 +25,23 @@ object Snapshot extends Logging {
   def readFromDump(hpr : HprofReader,callStack : Boolean,calculateRefs : Boolean) : Snapshot = {
     val snapshot = new Snapshot()
     logger.info("Resolving structure")
-    hpr.readFile(new InitialPassDumpVisitor(snapshot,callStack))
+    val ipdv = new InitialPassDumpVisitor(snapshot,callStack)
+    hpr.readFile(ipdv)
+    logger.info(" found:")
+    logger.info(s"   ${ipdv.classCount} class(es)")
+    logger.info(s"   ${ipdv.objectCount} object(s)")
     logger.info("Resolving instances")
     hpr.readFile(new ObjectPassDumpVisitor(snapshot,callStack))
     logger.info("Parse step complete")
     logger.info("Snapshot read, resolving...")
     snapshot.resolve(calculateRefs)
-    logger.info("Calculating retained sized.")
+    logger.info("Calculating tree depths.")
     snapshot.calculateDepths()
-    logger.info("Snapshot resolved.")
+
+    logger.info("Calculating retained sizes. (may take a while)")
+    snapshot.calculateDominators()
+    snapshot.calculateRetainedSizes()
+    logger.info("Snapshot load complete.")
     snapshot
   }
 }
@@ -41,11 +51,11 @@ class Snapshot extends Logging {
   import Snapshot._
 
   private var heapObjects = SortedMap[HeapId, JavaHeapObject]()
-  var roots: List[Root] = Nil
+  var roots: Map[Int,Root] = Map()
   private var classes = SortedMap[String, JavaClass]()
-  private var siteTraces = Map[JavaHeapObject, StackTrace]()
-  private var rootsMap = Map[JavaHeapObject, Set[Root]]()
-  private var finalizablesCache: SoftReference[List[JavaHeapObject]] = null
+  private var siteTraces = Map[HeapId, StackTrace]()
+  private var rootsMap = Map[HeapId, Set[Root]]()
+  private var finalizablesCache: SoftReference[List[HeapId]] = null
   var weakReferenceClass: JavaClass = null
   var referentFieldIndex: Int = 0
   private var javaLangClass: JavaClass = null
@@ -55,15 +65,145 @@ class Snapshot extends Logging {
   private var minimumObjectSize: Int = 0
   var creationDate : Option[Date] = None
 
+
+  // TODO Need up update basic size calculations see:
+  //    http://www.javamex.com/tutorials/memory/object_memory_usage.shtml
+  //    http://www.javamex.com/tutorials/memory/array_memory_usage.shtml
+
+  def calculateDominators() {
+    val startTime = System.currentTimeMillis()
+    val sortFn = SortUtil.sortByFn[JavaHeapObject](
+      (l,r)=>  r.minDepthToRoot - l.minDepthToRoot,
+      (l,r) => r.maxDepthToRoot - r.maxDepthToRoot,
+      (l,r) => (l.heapId.id - r.heapId.id).toInt
+    )
+
+    implicit val ord : Ordering[JavaHeapObject] = Ordering fromLessThan sortFn
+    var remaining = SortedSet[JavaHeapObject]() ++ heapObjects.values
+
+    println("BEFORE SIZE = " + remaining.size)
+    // first pass
+    remaining.foreach { obj =>
+      if(obj.dominator == UnknownDominator) {
+        val strongRefers = obj.referers.filterNot(_.refersOnlyWeaklyTo(obj))
+//        println("SR = " + strongRefers +"  " +  obj.referers.size)
+        if(strongRefers.size < 2) {
+          if(strongRefers.size == 0)
+            obj.dominator = NoDominotor
+          else
+            obj.dominator = HeapObjectDominator(strongRefers.head.heapId)
+          remaining -= obj
+        }
+      }
+    }
+
+    remaining.foreach { obj =>
+      if(obj.dominator == UnknownDominator) {
+        val newRefs = rootsetReferencesTo(obj, includeWeak = false)
+        if(!newRefs.isEmpty) {
+//          println("obj = " + obj)
+          val retainingSet = newRefs.map(_.objectSet).reduce(_.intersect(_))-obj
+          if(!retainingSet.isEmpty) {
+  //          println("Retaining set = " + retainingSet)
+            val dominatorChain = newRefs.head.chain.filter(retainingSet.contains(_))
+
+  //          println("HERE " + dominatorChain)
+
+            var cur = obj
+            var chain = dominatorChain.reverse
+            while(!chain.isEmpty) {
+              val head = chain.head
+              if(head.dominator != UnknownDominator)
+                chain = Nil else {
+                cur.dominator = HeapObjectDominator(head.heapId)
+                cur = head
+                chain = chain.tail
+              }
+            }
+          }
+          else
+            obj.dominator = NoDominotor
+
+        } else
+          obj.dominator = NoDominotor
+      }
+
+    }
+//    println("Remaining.size = " + remaining.size)
+//    println("Remaining = " + remaining)
+    val endTime = System.currentTimeMillis()
+    logger.info("Dominator chasing took " + (endTime - startTime) + "ms")
+
+  }
+
+  def calculateRetainedSizes() {
+     val startTime = System.currentTimeMillis()
+    var idx = 0
+    var secondaryCount = 0
+
+    var lastPercent = 0
+    val total = heapObjects.size
+    def incCount() {
+      idx += 1
+      val percent = (idx.toDouble / total * 100).floor.toInt
+      if(percent > lastPercent) {
+        lastPercent = percent
+        if(percent % 10 == 0)
+          print(percent)
+        else
+          print(".")
+      }
+    }
+
+    // sorting furthest from root to nearest speads up calculation due to reuse of graphs
+    heapObjects.values.toList.sortWith{
+      case (a,b) =>
+        val diff1 = (b.minDepthToRoot - a.minDepthToRoot)
+        if(diff1 != 0)
+          diff1 < 0
+        else
+          (b.maxDepthToRoot - a.maxDepthToRoot) > 0
+    } foreach { obj =>
+      if(!obj.retainedCalculated) {
+        incCount()
+        val size = obj.size
+        val newRefs = rootsetReferencesTo(obj, includeWeak = false)
+        if(!newRefs.isEmpty) {
+          val retainingSet = newRefs.map(_.objectSet).reduce(_.intersect(_))-obj
+
+          retainingSet.foreach( _.retaining += size )
+
+          // try and use the graph for stuff closer to the root
+          obj.retainedCalculated = true
+          var targetObj = obj
+          var targetRetained = retainingSet
+          while(targetObj.referers.size == 1 && !targetObj.referers.head.retainedCalculated) {
+            targetObj = targetObj.referers.head
+            val targetSize = targetObj.size
+            targetRetained -= targetObj
+            incCount()
+            secondaryCount += 1
+            targetRetained.foreach( _.retaining += targetSize )
+            targetObj.retainedCalculated = true
+          }
+        }
+      }
+    }
+    val endTime = System.currentTimeMillis()
+    println()
+    println(s"Calculating retained size took ${endTime-startTime}ms")
+
+  }
+
   def calculateDepths() {
 
     var visited = Set[HeapId]()
 
     var depth = 1
     var toVisit = Set[HeapId]()
-    rootsMap.foreach { case (k,v) =>
-      k.addDepth(depth)
-      toVisit += k.heapId
+    rootsMap.foreach { case (heapId,v) =>
+      heapId.getOpt(this).get.addDepth(depth)
+      toVisit += heapId
     }
 
     while(toVisit.size > 0) {
@@ -89,7 +229,7 @@ class Snapshot extends Logging {
   def setSiteTrace(obj: JavaHeapObject, trace: Option[StackTrace]) {
     trace match {
       case Some(t) if !t.frames.isEmpty =>
-        siteTraces += (obj -> t)
+        siteTraces += (obj.heapId -> t)
       case _ =>
     }
   }
@@ -99,7 +239,7 @@ class Snapshot extends Logging {
   def noUserClasses = classes.values.filterNot(_.isPlatformClass).size
   def noRoots = roots.size
 
-  def getSiteTrace(obj: JavaHeapObject): Option[StackTrace] = siteTraces.get(obj)
+  def getSiteTrace(obj: JavaHeapObject): Option[StackTrace] = siteTraces.get(obj.heapId)
 
   def setIdentifierSize(size: Int) {
     identifierSize = size
@@ -115,7 +255,7 @@ class Snapshot extends Logging {
   // TODO This is a horrible way to handle root ids - they should be assigned earlier
   def addRoot(r: Root) {
     r.index =roots.size
-    roots ++= List(r)
+    roots += (r.index  -> r)
   }
 
   def addClass(id: HeapId, c: JavaClass) {
@@ -123,6 +263,7 @@ class Snapshot extends Logging {
     putInClassesMap(c)
   }
 
+  def allObjects = heapObjects.values
   /**
    * Called after reading complete, to initialize the structure
    */
@@ -165,7 +306,7 @@ class Snapshot extends Logging {
         logger.info(".")
     }
 
-    for (r <- roots)
+    for (r <- roots.values)
       findHeapObject(r.valueHeapId).foreach( _.addReferenceFromRoot(r))
   }
 
@@ -199,15 +340,15 @@ class Snapshot extends Logging {
    **/
   def getClasses: Iterable[JavaClass] = classes.values
 
-  def getFinalizerObjects: List[JavaHeapObject] = {
+  def getFinalizerObjects: List[HeapId] = {
     if (finalizablesCache != null) {
-      val obj: List[JavaHeapObject] = finalizablesCache.get
+      val obj: List[HeapId] = finalizablesCache.get
       if (obj != null) return obj
     }
     val clazz: JavaClass = findClassByName("java.lang.ref.Finalizer").getOrElse(throw new IllegalStateException("Cant find Finalizer class"))
     val queue: JavaObject = clazz.getStaticField("queue").asInstanceOf[JavaObject]
     val tmp: Any = queue.getField("head")
-    var finalizablesC: List[JavaHeapObject] = Nil
+    var finalizablesC: List[HeapId] = Nil
     if (tmp != null) {
       var head: JavaObject = tmp.asInstanceOf[JavaObject]
       var done = false
@@ -218,34 +359,35 @@ class Snapshot extends Logging {
           done = true
         } else {
           head = next.asInstanceOf[JavaObject]
-          finalizablesC ::= referent
+          finalizablesC ::= referent.heapId
         }
       }
     }
-    finalizablesCache = new SoftReference[List[JavaHeapObject]](finalizablesC.reverse)
+    finalizablesCache = new SoftReference[List[HeapId]](finalizablesC.reverse)
     finalizablesC
   }
 
   def rootsetReferencesTo(target: JavaHeapObject, includeWeak: Boolean): List[CompleteReferenceChain] = {
-    val fifo = ListBuffer[ReferenceChain]()
-    var visited = SortedSet[JavaHeapObject]()
-    var result = List[CompleteReferenceChain]()
-    visited += target
 
-    fifo += new ReferenceChain(target, null)
+    val fifo = ListBuffer[List[JavaHeapObject]]()
+    var result = List[CompleteReferenceChain]()
+    var visited = Set[HeapId](target.heapId)
+
+    fifo += target :: Nil
     while (fifo.size > 0) {
-      val chain: ReferenceChain = fifo.remove(0)
-      val curr: JavaHeapObject = chain.obj
+      val chain: List[JavaHeapObject] = fifo.remove(0)
+      val curr: JavaHeapObject = chain.head
       curr.getRootReferences.foreach { root =>
         result = new CompleteReferenceChain(root,chain) :: result
       }
 
-      curr.referers.foreach {
+      curr.referersSet.foreach {
         t =>
           if (!visited.contains(t)) {
-            if (includeWeak || !t.refersOnlyWeaklyTo(this, curr)) {
+            val obj = t.get(this)
+            if (includeWeak || !obj.refersOnlyWeaklyTo(curr)) {
               visited += t
-              fifo += new ReferenceChain(t, chain)
+              fifo += obj :: chain
             }
           }
       }
@@ -254,10 +396,10 @@ class Snapshot extends Logging {
   }
 
   private[model] def addReferenceFromRoot(root: Root, obj: JavaHeapObject) {
-    rootsMap += obj -> (rootsMap.getOrElse(obj,Set.empty) + root)
+    rootsMap += obj.heapId -> (rootsMap.getOrElse(obj.heapId,Set.empty) + root)
   }
 
-  private[model] def getRoots(obj: JavaHeapObject): Set[Root] = rootsMap.getOrElse(obj,Set.empty)
+  private[model] def getRoots(obj: JavaHeapObject): Set[Root] = rootsMap.getOrElse(obj.heapId,Set.empty)
 
   private[model] def getJavaLangClass: JavaClass = javaLangClass
 

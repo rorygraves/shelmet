@@ -9,4 +9,5 @@ case class HeapId(id : Long) extends Ordered[HeapId] {
 
   def isNull = id == 0
   def getOpt(implicit snapshot : Snapshot) : Option[JavaHeapObject] = snapshot.findHeapObject(this)
+  def get(implicit snapshot : Snapshot) : JavaHeapObject = getOpt.get
 }

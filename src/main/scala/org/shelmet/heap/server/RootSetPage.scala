@@ -6,10 +6,8 @@ import org.shelmet.heap.util.SortUtil
 class RootSetPage(snapshot : Snapshot) extends AbstractPage(snapshot) {
   override def run() {
     html("All Members of the Rootset") {
-
-      // TODO The rootType/root grouping and sorting should be shared between this class and ObjectRootsPage
       // group by returns an unsorted map so sort it
-      snapshot.roots.groupBy(_.rootType).toList.sortBy(_._1.sortOrder) foreach {
+      snapshot.roots.values.toList.groupBy(_.rootType).toList.sortBy(_._1.sortOrder) foreach {
         case (rootType, unsortedGroupRoots) =>
           h2 {
             printEncoded(rootType.name + " References")
@@ -17,9 +15,9 @@ class RootSetPage(snapshot : Snapshot) extends AbstractPage(snapshot) {
 
           val groupRoots = unsortedGroupRoots.sortWith(SortUtil.sortByFn(
             (l,r) => l.getDescription.compareTo(r.getDescription),
-            (l,r) => l.getReferencedItem.map { _.toString }.getOrElse("").compareTo(
-              r.getReferencedItem.map { _.toString }.getOrElse("")
-            )
+            (l,r) => l.getReferencedItem.map(_.toString).getOrElse("").compareTo(
+              r.getReferencedItem.map(_.toString).getOrElse("")),
+            (l,r) => l.index - r.index
           ))
 
           groupRoots foreach {

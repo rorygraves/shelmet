@@ -25,7 +25,7 @@ class ObjectRootsPage(snapshot : Snapshot,query : String,includeWeak: Boolean) e
             (l,r) => l.root.getDescription.compareTo(r.root.getDescription),
             (l,r) => l.root.getReferencedItem.map { _.toString }.getOrElse("").compareTo(
               r.root.getReferencedItem.map { _.toString }.getOrElse("")),
-            (l,r) => l.root.index.compareTo(r.root.index)))
+            (l,r) => l.root.index - r.root.index))
 
           out.print("<h1>References to ")
           printThing(target)
@@ -46,14 +46,14 @@ class ObjectRootsPage(snapshot : Snapshot,query : String,includeWeak: Boolean) e
               out.print(")</small>")
             }
             out.print(" :</h3>")
-            var ref: ReferenceChain = reference.chain
-            while (ref != null) {
-              val next: ReferenceChain = ref.next
-              val obj: JavaHeapObject = ref.obj
+            var ref = reference.chain
+            while (ref != Nil) {
+              val next = ref.tail
+              val obj: JavaHeapObject = ref.head
               printEncoded("--> ")
               printThing(obj)
-              if (next != null) {
-                printEncoded(" (" + obj.describeReferenceTo(next.obj).mkString("/") + ")")
+              if (next != Nil) {
+                printEncoded(" (" + obj.describeReferenceTo(next.head).mkString("/") + ")")
               }
               out.println("<br/>")
               ref = next
