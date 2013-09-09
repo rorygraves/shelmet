@@ -264,11 +264,11 @@ class ObjectPage(snapshot : Snapshot,query : String) extends AbstractPage(snapsh
         tableData(out.println(s"""${obj.minDepthToRoot}/${obj.maxDepthToRoot}"""))
       }
 
-      tableRow {
-        tableData(out.println("<b>Dominator</b>"))
-        tableData(out.println(s"""${obj.dominator}"""))
-      }
-
+//      tableRow {
+//        tableData(out.println("<b>Dominator</b>"))
+//        tableData(out.println(s"""${obj.dominator}"""))
+//      }
+//
       tableRow {
         tableData { out.println("<b>References to this object</b>") }
         tableData {

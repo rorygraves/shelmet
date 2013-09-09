@@ -18,6 +18,11 @@ abstract class JavaHeapObject(val heapId : HeapId,snapshotV : Snapshot) extends 
   var retainedCalculated = false
   var retaining : Long = 0
 
+  def setDominator(d : Dominator) {
+    if(dominator != UnknownDominator && dominator != d)
+      throw new IllegalStateException("Dominator already set")
+    dominator = d
+  }
   var dominator : Dominator = UnknownDominator
 
   def retainedSize = size + retaining

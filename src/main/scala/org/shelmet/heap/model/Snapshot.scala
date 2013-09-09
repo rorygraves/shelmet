@@ -71,69 +71,83 @@ class Snapshot extends Logging {
   //    http://www.javamex.com/tutorials/memory/array_memory_usage.shtml
 
   def calculateDominators() {
-    val startTime = System.currentTimeMillis()
-    val sortFn = SortUtil.sortByFn[JavaHeapObject](
-      (l,r)=>  r.minDepthToRoot - l.minDepthToRoot,
-      (l,r) => r.maxDepthToRoot - r.maxDepthToRoot,
-      (l,r) => (l.heapId.id - r.heapId.id).toInt
-    )
-
-    implicit val ord : Ordering[JavaHeapObject] = Ordering fromLessThan sortFn
-    var remaining = SortedSet[JavaHeapObject]() ++ heapObjects.values
-
-    println("BEFORE SIZE = " + remaining.size)
-    // first pass
-    remaining.foreach { obj =>
-      if(obj.dominator == UnknownDominator) {
-        val strongRefers = obj.referers.filterNot(_.refersOnlyWeaklyTo(obj))
-//        println("SR = " + strongRefers +"  " +  obj.referers.size)
-        if(strongRefers.size < 2) {
-          if(strongRefers.size == 0)
-            obj.dominator = NoDominotor
-          else
-            obj.dominator = HeapObjectDominator(strongRefers.head.heapId)
-          remaining -= obj
-        }
-      }
-    }
-
-    remaining.foreach { obj =>
-      if(obj.dominator == UnknownDominator) {
-        val newRefs = rootsetReferencesTo(obj, includeWeak = false)
-        if(!newRefs.isEmpty) {
-//          println("obj = " + obj)
-          val retainingSet = newRefs.map(_.objectSet).reduce(_.intersect(_))-obj
-          if(!retainingSet.isEmpty) {
-  //          println("Retaining set = " + retainingSet)
-            val dominatorChain = newRefs.head.chain.filter(retainingSet.contains(_))
-
-  //          println("HERE " + dominatorChain)
-
-            var cur = obj
-            var chain = dominatorChain.reverse
-            while(!chain.isEmpty) {
-              val head = chain.head
-              if(head.dominator != UnknownDominator)
-                chain = Nil else {
-                cur.dominator = HeapObjectDominator(head.heapId)
-                cur = head
-                chain = chain.tail
-              }
-            }
-          }
-          else
-            obj.dominator = NoDominotor
-
-        } else
-          obj.dominator = NoDominotor
-      }
-
-    }
-//    println("Remaining.size = " + remaining.size)
-//    println("Remaining = " + remaining)
-    val endTime = System.currentTimeMillis()
-    logger.info("Dominator chasing took " + (endTime - startTime) + "ms")
-
+//    val startTime = System.currentTimeMillis()
+//    val sortFn = SortUtil.sortByFn[JavaHeapObject](
+//      (l,r)=>  r.minDepthToRoot - l.minDepthToRoot,
+//      (l,r) => r.maxDepthToRoot - r.maxDepthToRoot,
+//      (l,r) => (l.heapId.id - r.heapId.id).toInt
+//    )
+//
+//    implicit val ord : Ordering[JavaHeapObject] = Ordering fromLessThan sortFn
+//    var remaining = SortedSet[JavaHeapObject]() ++ heapObjects.values
+//
+//    println("BEFORE SIZE = " + remaining.size)
+//    // first pass
+//    remaining.foreach { obj =>
+//      if(obj.dominator == UnknownDominator) {
+//        val strongRefers = obj.referers.filterNot(_.refersOnlyWeaklyTo(obj))
+////        println("SR = " + strongRefers +"  " +  obj.referers.size)
+//        if(strongRefers.size < 2) {
+//          if(strongRefers.size == 0)
+//            obj.setDominator(NoDominotor)
+//          else
+//            obj.setDominator(HeapObjectDominator(strongRefers.head.heapId))
+//          remaining -= obj
+//        }
+//      }
+//    }
+//
+//    remaining.foreach { obj =>
+//      if(obj.dominator == UnknownDominator) {
+//        val newRefs = rootsetReferencesTo(obj, includeWeak = false)
+//        if(!newRefs.isEmpty) {
+//          val retainingSet = newRefs.map(_.objectSet).reduce(_.intersect(_))-obj
+//          if(!retainingSet.isEmpty) {
+//            val dominatorChain = newRefs.head.chain.filter(retainingSet.contains(_))
+//            var cur = obj
+//            var chain = dominatorChain.reverse
+//            while(!chain.isEmpty) {
+//              val head = chain.head
+//              if(head.dominator != UnknownDominator)
+//                chain = Nil else {
+//                cur.setDominator(HeapObjectDominator(head.heapId))
+//                cur = head
+//                chain = chain.tail
+//              }
+//            }
+//          }
+//          else
+//            obj.setDominator(NoDominotor)
+//
+//        } else
+//          obj.setDominator(NoDominotor)
+//      }
+//
+//    }
+//
+//    println("Adding totals")
+//    // now go through and calculate retained
+//    heapObjects.values foreach { obj =>
+//      val size = obj.size
+//      var dom = obj.dominator
+//      var done = false
+//      println("HERE - " + obj)
+//      while(!done) {
+//        dom match {
+//          case nd : HeapObjectDominator =>
+//            val nextObj = nd.heapId.get(this)
+//            println("  nObj=" + nextObj)
+//            nextObj.newRetained += size
+//            dom = nextObj.dominator
+//          case _ =>
+//            done = true
+//        }
+//      }
+//    }
+//
+//    val endTime = System.currentTimeMillis()
+//    logger.info("Dominator chasing took " + (endTime - startTime) + "ms")
+//
   }
 
   def calculateRetainedSizes() {
@@ -385,7 +399,7 @@ class Snapshot extends Logging {
         t =>
           if (!visited.contains(t)) {
             val obj = t.get(this)
-            if (includeWeak || !obj.refersOnlyWeaklyTo(curr)) {
+            if ((includeWeak || !obj.refersOnlyWeaklyTo(curr))) {
               visited += t
               fifo += obj :: chain
             }
@@ -394,6 +408,8 @@ class Snapshot extends Logging {
     }
     result
   }
+
+
 
   private[model] def addReferenceFromRoot(root: Root, obj: JavaHeapObject) {
     rootsMap += obj.heapId -> (rootsMap.getOrElse(obj.heapId,Set.empty) + root)
