@@ -3,16 +3,18 @@ package org.shelmet.heap.model
 import org.shelmet.heap.util.Misc
 import org.shelmet.heap.HeapId
 import scala.collection.SortedSet
+import org.shelmet.heap.shared.InstanceId
 
 /**
  * Represents an object that's allocated out of the Java heap.  It occupies
  * memory in the VM.  It can be a
  * JavaClass, a JavaObjectArray, a JavaValueArray or a JavaObject.
  */
-abstract class JavaHeapObject(val heapId : HeapId,snapshotV : Snapshot) extends Ordered[JavaHeapObject] {
+abstract class JavaHeapObject(val heapId : HeapId,val objIdent : Option[InstanceId],snapshotV : Snapshot) extends Ordered[JavaHeapObject] {
 
   implicit val snapshot : Snapshot = snapshotV
 
+  // TODO change this to normal set
   var referersSet: SortedSet[HeapId] = SortedSet.empty
 
   var retainedCalculated = false
@@ -64,7 +66,12 @@ abstract class JavaHeapObject(val heapId : HeapId,snapshotV : Snapshot) extends 
    */
   def getIdString: String = Misc.toHex(heapId.id)
 
-  override def toString: String = getClazz.displayName + "@" + getIdString
+  override def toString: String = {
+    getClazz.displayName + (objIdent match {
+      case Some(ident) => " #" + ident.id
+      case None => "@"  + getIdString
+    })
+  }
 
   override val hashCode : Int = heapId.hashCode()
 

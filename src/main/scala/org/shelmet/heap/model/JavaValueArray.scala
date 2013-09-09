@@ -5,7 +5,7 @@ import org.shelmet.heap.HeapId
 
 class JavaValueArray(heapId: HeapId,snapshot : Snapshot,val instanceId : InstanceId,
                      val clazzId : HeapId,val size : Int,fieldType : FieldType,
-                     val data : Seq[AnyVal]) extends JavaHeapObject(heapId,snapshot) {
+                     val data : Seq[AnyVal]) extends JavaHeapObject(heapId,Some(instanceId),snapshot) {
 
   override def getClazz: JavaClass = clazzId.getOpt(snapshot).get.asInstanceOf[JavaClass]
 

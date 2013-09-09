@@ -6,7 +6,7 @@ import scala.Some
 import org.shelmet.heap.parser.{ClassFieldEntry, ClassStaticEntry}
 import org.shelmet.heap.HeapId
 import java.util.Date
-import org.shelmet.heap.shared.{BaseFieldType, ClassType}
+import org.shelmet.heap.shared.{InstanceId, BaseFieldType, ClassType}
 
 object InitialPassDumpVisitor {
   class ThreadObject(val threadId: Long,val  stackSeq: Int)
@@ -109,7 +109,6 @@ class InitialPassDumpVisitor(snapshot : Snapshot,callStack: Boolean) extends Abs
         val fieldName = getNameFromID(fi.nameId)
         new JavaField(fieldName,className + "." + fieldName,fi.itemType)
     }
-
     val c = new JavaClass(snapshot,id,className,superClassId,classLoaderId,signerId,protDomainId,statics,instanceSize,fields)
     snapshot.addClass(id, c)
     snapshot.setSiteTrace(c, stackTrace)

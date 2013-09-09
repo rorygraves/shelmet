@@ -1,13 +1,14 @@
 package org.shelmet.heap.model
 
 import org.shelmet.heap.HeapId
+import org.shelmet.heap.shared.InstanceId
 
 /**
  * Represents Java instance
  * @param fieldsLength The length of the field values (in bytes)
  */
-class JavaObject(id: HeapId, snapshotV: Snapshot,classId : HeapId,val fieldValues : Vector[Any],fieldsLength : Int)
-  extends JavaHeapObject(id, snapshotV) {
+class JavaObject(id: HeapId, snapshotV: Snapshot,val instanceId : InstanceId,classId : HeapId,
+                 val fieldValues : Vector[Any],fieldsLength : Int) extends JavaHeapObject(id,Some(instanceId),snapshotV) {
 
   var minDepth = -1
   var maxDepth = -1

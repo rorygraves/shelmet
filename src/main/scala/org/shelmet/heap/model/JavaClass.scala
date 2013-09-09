@@ -13,7 +13,7 @@ class JavaClass(snapshotV : Snapshot,
                 statics: List[JavaStatic],
                 instanceSize: Int,
                 val fields : List[JavaField]
-                ) extends JavaHeapObject(heapId,snapshotV) {
+                ) extends JavaHeapObject(heapId,None,snapshotV) {
 
   def getPackage = {
     if (name.contains("["))

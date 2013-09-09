@@ -4,9 +4,10 @@ import org.shelmet.heap.server.SHelmetServer
 import com.typesafe.scalalogging.slf4j.Logging
 
 object Main extends Logging {
-  // TODO Fixes - The classname handling is horrible - its string manipulation throughout - needs a proper type e.g. is I an int or a class named 'I'?
+  // TODO Show heapId in showObject display
+  // TODO numeric id for classes? (fiddly due to ordering)
   // TODO Planned - Updates to use  /class/<classname>/<#instance> - i.e. similar to JVisualVM to improve links/display
-  // TODO Planned - Calculate retained sized
+  // TODO Planned - Improve retained size calculations (Dominator trees?)
   // TODO Planned - Overflow dump to disk allowing examination of larger heaps
   // TODO Planned - An OQL equivalent using Scala and dynamic evaluation
   // TODO Planned - better displays//higher level views of collection classes.

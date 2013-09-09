@@ -1,8 +1,10 @@
 package org.shelmet.heap.model
 
 import org.shelmet.heap.HeapId
+import org.shelmet.heap.shared.InstanceId
 
-class JavaObjectArray(id : HeapId,snapshot : Snapshot,classId: HeapId,elementIDs : Seq[HeapId]) extends JavaHeapObject(id,snapshot) {
+class JavaObjectArray(id : HeapId,snapshot : Snapshot,val instanceId : InstanceId,classId: HeapId,
+                      elementIDs : Seq[HeapId]) extends JavaHeapObject(id,Some(instanceId),snapshot) {
 
   override def getClazz: JavaClass = classId.getOpt(snapshot).get.asInstanceOf[JavaClass]
 

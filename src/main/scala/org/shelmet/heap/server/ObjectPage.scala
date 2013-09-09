@@ -1,7 +1,7 @@
 package org.shelmet.heap.server
 
 import org.shelmet.heap.model._
-import org.shelmet.heap.util.Misc
+import org.shelmet.heap.util.{SortUtil, Misc}
 
 class ObjectPage(snapshot : Snapshot,query : String) extends AbstractPage(snapshot) {
 
@@ -148,7 +148,7 @@ class ObjectPage(snapshot : Snapshot,query : String) extends AbstractPage(snapsh
   }
 
   def renderInstance(obj : JavaObject) {
-    html(s"instance of ${obj.getClazz.name} (${obj.heapId.toHex})") {
+    html(s"instance of ${obj.getClazz.name} #${obj.objIdent.get.id}") {
 
       basicObjectRender(obj) {
         // no extra table rows
@@ -195,7 +195,7 @@ class ObjectPage(snapshot : Snapshot,query : String) extends AbstractPage(snapsh
   }
 
   def refactorValueArray(array : JavaValueArray) {
-    html(s"value array ${array.getIdString} (${array.heapId.toHex})") {
+    html(s"value array: ${array.toString}") {
 
       basicObjectRender(array) {
         // no rows
@@ -206,7 +206,7 @@ class ObjectPage(snapshot : Snapshot,query : String) extends AbstractPage(snapsh
   }
 
   def renderObjectArray(objArray : JavaObjectArray) {
-    html(s"instance of ${objArray.displayName} (${objArray.heapId.toHex})") {
+    html(s"object array: ${objArray.toString}") {
       val elements = objArray.elements.zipWithIndex
       out.println("<h1>Array of " + elements.size + " objects</h1>")
 
@@ -238,7 +238,17 @@ class ObjectPage(snapshot : Snapshot,query : String) extends AbstractPage(snapsh
     val rootRefs: Set[Root] = obj.getRootReferences
     val rootRefCounts = rootRefs.size
 
-    val refers = obj.referers.toList.sortWith((a, b) => a.toString.compareTo(b.toString) <0)
+    val refers = obj.referers.toList.sortWith(SortUtil.sortByFn[JavaHeapObject](
+      (a,b) => a.getClazz.compareTo(b.getClazz),
+      (a,b) => {
+        val aVal = a.objIdent.map(_.id).getOrElse(Int.MinValue)
+        val bVal = b.objIdent.map(_.id).getOrElse(Int.MinValue)
+        aVal.compareTo(bVal)
+      },
+      (a, b) => a.toString.compareTo(b.toString)
+    ))
+
+
     val refersCount = refers.size
 
 

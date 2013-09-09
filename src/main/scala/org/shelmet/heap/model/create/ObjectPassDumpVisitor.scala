@@ -31,7 +31,7 @@ class ObjectPassDumpVisitor(snapshot : Snapshot,callStack: Boolean) extends Abst
     if(!fields.isDefined)
       throw new IllegalStateException("Fields must be defined for instance declaration")
     val instanceId = getInstanceId(classId)
-    val jObj = new JavaObject(heapId,snapshot,classId,fields.get,fieldsLengthBytes)
+    val jObj = new JavaObject(heapId,snapshot,instanceId,classId,fields.get,fieldsLengthBytes)
     snapshot.addHeapObject(heapId, jObj)
 
     val stackTrace = getStackTraceFromSerial(stackTraceSerialId)
@@ -42,7 +42,7 @@ class ObjectPassDumpVisitor(snapshot : Snapshot,callStack: Boolean) extends Abst
                                values : Seq[HeapId]) {
     val stackTrace = getStackTraceFromSerial(stackTraceSerialId)
     val instanceId = getInstanceId(classId)
-    val arr = new JavaObjectArray(heapId,snapshot,classId,values)
+    val arr = new JavaObjectArray(heapId,snapshot,instanceId,classId,values)
     snapshot.addHeapObject(heapId, arr)
     snapshot.setSiteTrace(arr, stackTrace)
   }
