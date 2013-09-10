@@ -2,8 +2,8 @@ package org.shelmet.heap.model
 
 import org.shelmet.heap.util.Misc
 import org.shelmet.heap.HeapId
-import scala.collection.SortedSet
 import org.shelmet.heap.shared.InstanceId
+import scala.collection.SortedSet
 
 /**
  * Represents an object that's allocated out of the Java heap.  It occupies
@@ -14,8 +14,17 @@ abstract class JavaHeapObject(val heapId : HeapId,val objIdent : Option[Instance
 
   implicit val snapshot : Snapshot = snapshotV
 
-  // TODO change this to normal set
-  var referersSet: SortedSet[HeapId] = SortedSet.empty
+  var hardRefersSet : SortedSet[HeapId] = SortedSet.empty
+  var softRefersSet : SortedSet[HeapId] = SortedSet.empty
+
+  def referersSet : SortedSet[HeapId] =
+    if(softRefersSet.isEmpty)
+      hardRefersSet
+    else if(hardRefersSet.isEmpty)
+      softRefersSet
+    else
+      softRefersSet ++ hardRefersSet
+
 
   var retainedCalculated = false
   var retaining : Long = 0
@@ -43,10 +52,13 @@ abstract class JavaHeapObject(val heapId : HeapId,val objIdent : Option[Instance
 
   def referers : SortedSet[JavaHeapObject] = referersSet.map(snapshot.findHeapObject(_).get)
 
-  def noRefers = referersSet.size
+  def noRefers = softRefersSet.size + hardRefersSet.size
 
   private[model] def addReferenceFrom(other: JavaHeapObject) {
-    referersSet += other.heapId
+    if(other.refersOnlyWeaklyTo(this))
+      softRefersSet += other.heapId
+    else
+      hardRefersSet += other.heapId
   }
 
   def getClazz: JavaClass
@@ -114,6 +126,7 @@ abstract class JavaHeapObject(val heapId : HeapId,val objIdent : Option[Instance
       List.empty
 
   /**
+   * @return the size of this object, in bytes, including VM overhead
    * @return the size of this object, in bytes, including VM overhead
    */
   def size: Int
