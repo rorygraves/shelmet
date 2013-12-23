@@ -32,7 +32,7 @@ class JavaClass(snapshotV : Snapshot,
   // platform classes.
   def isPlatformClass : Boolean = isBootstrap
 
-  final def getClazz: JavaClass = snapshot.getJavaLangClass
+  final def getClazz: JavaClass = Snapshot.instance.getJavaLangClass
 
   final def getSuperclass: Option[JavaClass] = superClassId.getOpt.asInstanceOf[Option[JavaClass]]
 
@@ -77,7 +77,7 @@ class JavaClass(snapshotV : Snapshot,
   def isArray: Boolean = name.indexOf('[') != -1
 
   def getInstances(includeSubclasses: Boolean): List[JavaHeapObject] = {
-    val instances = instanceRefs.map(_.getOpt.get)
+    val instances = instanceRefs.map( _.get)
 
     if (includeSubclasses)
       instances.toList ++ getSubclasses.flatMap(_.getInstances(includeSubclasses = true))
@@ -95,7 +95,7 @@ class JavaClass(snapshotV : Snapshot,
       getInstances(includeSubclasses).size
   }
 
-  def getSubclasses: Set[JavaClass] = subclassRefs.map(_.getOpt.get.asInstanceOf[JavaClass])
+  def getSubclasses: Set[JavaClass] = subclassRefs.map(_.get.asInstanceOf[JavaClass])
 
   /**
    * This can only safely be called after resolve()
@@ -155,7 +155,7 @@ class JavaClass(snapshotV : Snapshot,
   /**
    * @return the size of an instance of this class.  Gives 0 for an array type.
    */
-  def getInstanceSize: Int = instanceSize + snapshot.getMinimumObjectSize
+  def getInstanceSize: Int = instanceSize + Snapshot.instance.getMinimumObjectSize
 
   /**
    * @return The size of all instances of this class.  Correctly handles arrays.
@@ -169,7 +169,7 @@ class JavaClass(snapshotV : Snapshot,
       instances.foldLeft(0L)(_ + _.size)
   }
 
-  override def size: Int = snapshot.getJavaLangClass.getInstanceSize
+  override def size: Int = Snapshot.instance.getJavaLangClass.getInstanceSize
 
   override def visitReferencedObjects(visit : JavaHeapObject => Unit,includeStatics : Boolean = true) {
     super.visitReferencedObjects(visit,includeStatics)

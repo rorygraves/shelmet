@@ -49,11 +49,11 @@ class ObjectRootsPage(snapshot : Snapshot,query : String,includeWeak: Boolean) e
             var ref = reference.chain
             while (ref != Nil) {
               val next = ref.tail
-              val obj: JavaHeapObject = ref.head.get(snapshot)
+              val obj: JavaHeapObject = ref.head.get
               printEncoded("--> ")
               printThing(obj)
               if (next != Nil) {
-                printEncoded(" (" + obj.describeReferenceTo(next.head.get(snapshot)).mkString("/") + ")")
+                printEncoded(" (" + obj.describeReferenceTo(next.head.get).mkString("/") + ")")
               }
               out.println("<br/>")
               ref = next

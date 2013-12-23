@@ -84,27 +84,27 @@ class CompareTest extends FunSuite with Logging with BeforeAndAfterAll {
   }
 
   test("Render About page") {
-    testPage("about","http://localhost:8080/about/")
+    testPage("about","http://localhost:8080/about")
   }
 
   test("Render AllClassesWithoutPlatform page") {
-    testPage("allClassesWithoutPlatform","http://localhost:8080/allClassesWithoutPlatform/")
+    testPage("allClassesWithoutPlatform","http://localhost:8080/allClassesWithoutPlatform")
   }
 
   test("Render AllClassesWithPlatform page") {
-    testPage("allClassesWithPlatform","http://localhost:8080/allClassesWithPlatform/")
+    testPage("allClassesWithPlatform","http://localhost:8080/allClassesWithPlatform")
   }
 
   test("Render RootSet page") {
-    testPage("rootSet","http://localhost:8080/rootSet/")
+    testPage("rootSet","http://localhost:8080/rootSet")
   }
 
   test("Render Finalizer Objects page") {
-    testPage("finalizerObjects","http://localhost:8080/finalizerObjects/")
+    testPage("finalizerObjects","http://localhost:8080/finalizerObjects")
   }
 
   test("Render Histogram page") {
-    testPage("histogram","http://localhost:8080/histogram/")
+    testPage("histogram","http://localhost:8080/histogram")
   }
 
   test("Render Histogram page (sorted by class)") {
@@ -116,7 +116,7 @@ class CompareTest extends FunSuite with Logging with BeforeAndAfterAll {
   }
 
   test("Render Finalizers page") {
-    testPage("finalizers","http://localhost:8080/finalizerSummary/")
+    testPage("finalizers","http://localhost:8080/finalizerSummary")
   }
 
   test("Render Reachables page") {

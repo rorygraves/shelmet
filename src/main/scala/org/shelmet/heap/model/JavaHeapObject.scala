@@ -12,8 +12,6 @@ import scala.collection.SortedSet
  */
 abstract class JavaHeapObject(val heapId : HeapId,val objIdent : Option[InstanceId],snapshotV : Snapshot) extends Ordered[JavaHeapObject] {
 
-  implicit val snapshot : Snapshot = snapshotV
-
   var hardRefersSet : SortedSet[HeapId] = SortedSet.empty
   var softRefersSet : SortedSet[HeapId] = SortedSet.empty
 
@@ -29,13 +27,6 @@ abstract class JavaHeapObject(val heapId : HeapId,val objIdent : Option[Instance
   var retainedCalculated = false
   var retaining : Long = 0
 
-  def setDominator(d : Dominator) {
-    if(dominator != UnknownDominator && dominator != d)
-      throw new IllegalStateException("Dominator already set")
-    dominator = d
-  }
-  var dominator : Dominator = UnknownDominator
-
   def retainedSize = size + retaining
   var minDepthToRoot = -1
   var maxDepthToRoot = -1
@@ -50,7 +41,7 @@ abstract class JavaHeapObject(val heapId : HeapId,val objIdent : Option[Instance
 
   override def compare(that: JavaHeapObject): Int = heapId.compareTo(that.heapId)
 
-  def referers : SortedSet[JavaHeapObject] = referersSet.map(snapshot.findHeapObject(_).get)
+  def referers : SortedSet[JavaHeapObject] = referersSet.map(Snapshot.instance.findHeapObject(_).get)
 
   def noRefers = softRefersSet.size + hardRefersSet.size
 
@@ -64,7 +55,7 @@ abstract class JavaHeapObject(val heapId : HeapId,val objIdent : Option[Instance
   def getClazz: JavaClass
 
   override def equals(other : Any) = other match {
-    case j : JavaHeapObject => j.heapId == this.heapId
+    case j : JavaHeapObject => (j eq this) || j.heapId == this.heapId
     case _ => false
   }
 
@@ -91,7 +82,7 @@ abstract class JavaHeapObject(val heapId : HeapId,val objIdent : Option[Instance
    * @return the StackTrace of the point of allocation of this object,
    *         or null if unknown
    */
-  def getAllocatedFrom: Option[StackTrace] = snapshot.getSiteTrace(this)
+  def getAllocatedFrom: Option[StackTrace] = Snapshot.instance.getSiteTrace(this)
 
   /**
    * Tell the visitor about all of the objects we refer to
@@ -101,13 +92,13 @@ abstract class JavaHeapObject(val heapId : HeapId,val objIdent : Option[Instance
   }
 
   private[model] def addReferenceFromRoot(r: Root) {
-    snapshot.addReferenceFromRoot(r, this)
+    Snapshot.instance.addReferenceFromRoot(r, this)
   }
 
   /**
    * Return the set of root references to this object.
    */
-  def getRootReferences: Set[Root] = snapshot.getRoots(this)
+  def getRootReferences: Set[Root] = Snapshot.instance.getRoots(this)
 
   /**
    * Given other, which the caller promises is in referers, determines if

@@ -16,7 +16,7 @@ import org.shelmet.heap.HeapId
 object HprofReader extends Logging {
   val MAGIC_NUMBER: Int = 0x4a415641
 
-  private val VERSION_1_0_1 = " PROFILE 1.0.1"
+  private val VERSION_1_0_1 = "PROFILE 1.0.1"
   private val VERSION_1_0_2 = "PROFILE 1.0.2"
 
   private val HPROF_UTF8: Int = 0x01
@@ -94,7 +94,7 @@ class HprofReader(fileName: String) extends Logging {
       val creationDate = new Date(in.readLong)
       dumpVisitor.creationDate(creationDate)
 
-      while (in.available() > 0) {
+      while (in.available() != 0) {
         val itemType = in.readUnsignedByte
         in.readInt
         val position = in.position
@@ -174,42 +174,24 @@ class HprofReader(fileName: String) extends Logging {
       logger.debug(s"    Read heap sub-record type $itemType, at position ${reader.position}")
 
       itemType match {
-        case HPROF_GC_ROOT_UNKNOWN =>
-          val id = reader.readID
-          dumpVisitor.gcRootUnknown(id)
-        case HPROF_GC_ROOT_THREAD_OBJ =>
-          val id = reader.readID
-          val threadSeq = reader.readInt
-          val stackSeq = reader.readInt
-          dumpVisitor.gcRootThreadObj(id,threadSeq,stackSeq)
-        case HPROF_GC_ROOT_JNI_GLOBAL =>
-          val id: Long = reader.readID
-          val jniGlobalRefId = reader.readID
-          dumpVisitor.gcRootJNIGlobal(id,jniGlobalRefId)
-        case HPROF_GC_ROOT_JNI_LOCAL =>
-          val id  = reader.readHeapId
-          val threadSeq = reader.readInt
-          val depth = reader.readInt
-          dumpVisitor.gcRootJNILocal(id,threadSeq,depth)
-        case HPROF_GC_ROOT_JAVA_FRAME =>
+        case HPROF_GC_INSTANCE_DUMP =>
           val id = reader.readHeapId
-          val threadSeq = reader.readInt
-          val depth = reader.readInt
-          dumpVisitor.gcRootJavaFrame(id,threadSeq,depth)
-        case HPROF_GC_ROOT_NATIVE_STACK =>
-          val id = reader.readHeapId
-          val threadSeq = reader.readInt
-          dumpVisitor.gcRootNativeStack(id,threadSeq)
-        case HPROF_GC_ROOT_STICKY_CLASS =>
-          val id = reader.readID
-          dumpVisitor.gcRootStickyClass(id)
-        case HPROF_GC_ROOT_THREAD_BLOCK =>
-          val id = reader.readID
-          val threadSeq = reader.readInt
-          dumpVisitor.gcRootThreadBlock(id,threadSeq)
-        case HPROF_GC_ROOT_MONITOR_USED =>
-          val id = reader.readID
-          dumpVisitor.gcRootMonitorUsed(id)
+          val stackTraceSerialId = reader.readInt
+          val classID = reader.readHeapId
+          val fieldDataBlockSize = reader.readInt
+          val rawFieldData = reader.readBytes(fieldDataBlockSize)
+
+          val dataReader = new DataReader(PositionDataInputStream(new ByteArrayInputStream(rawFieldData)),identifierSize)
+
+          // we can only read the fields if the dump visitor is able to supply the class field information
+          // this typically comes from an earlier pass.
+          val fieldSigs = dumpVisitor.getClassFieldInfo(classID)
+          val fields = fieldSigs match {
+            case Some(sigs : List[FieldType]) => Some(readInstanceFieldsFields(sigs,dataReader))
+            case None => None
+          }
+
+          dumpVisitor.instanceDump(id,stackTraceSerialId,classID,fields,fieldDataBlockSize)
         case HPROF_GC_CLASS_DUMP =>
           val id = reader.readHeapId
           val stackTraceSerialId = reader.readInt
@@ -248,24 +230,42 @@ class HprofReader(fileName: String) extends Logging {
 
           dumpVisitor.classDump(id,stackTraceSerialId,superClassId,classLoaderId,signersId,protDomainId,instanceSize,
             constPoolEntries,staticItems,fieldItems)
-        case HPROF_GC_INSTANCE_DUMP =>
+        case HPROF_GC_ROOT_UNKNOWN =>
+          val id = reader.readID
+          dumpVisitor.gcRootUnknown(id)
+        case HPROF_GC_ROOT_THREAD_OBJ =>
+          val id = reader.readID
+          val threadSeq = reader.readInt
+          val stackSeq = reader.readInt
+          dumpVisitor.gcRootThreadObj(id,threadSeq,stackSeq)
+        case HPROF_GC_ROOT_JNI_GLOBAL =>
+          val id: Long = reader.readID
+          val jniGlobalRefId = reader.readID
+          dumpVisitor.gcRootJNIGlobal(id,jniGlobalRefId)
+        case HPROF_GC_ROOT_JNI_LOCAL =>
+          val id  = reader.readHeapId
+          val threadSeq = reader.readInt
+          val depth = reader.readInt
+          dumpVisitor.gcRootJNILocal(id,threadSeq,depth)
+        case HPROF_GC_ROOT_JAVA_FRAME =>
           val id = reader.readHeapId
-          val stackTraceSerialId = reader.readInt
-          val classID = reader.readHeapId
-          val fieldDataBlockSize = reader.readInt
-          val rawFieldData = reader.readBytes(fieldDataBlockSize)
-
-          val dataReader = new DataReader(PositionDataInputStream(new ByteArrayInputStream(rawFieldData)),identifierSize)
-
-          // we can only read the fields if the dump visitor is able to supply the class field information
-          // this typically comes from an earlier pass.
-          val fieldSigs = dumpVisitor.getClassFieldInfo(classID)
-          val fields = fieldSigs match {
-            case Some(sigs : List[FieldType]) => Some(readInstanceFieldsFields(sigs,dataReader))
-            case None => None
-          }
-
-          dumpVisitor.instanceDump(id,stackTraceSerialId,classID,fields,fieldDataBlockSize)
+          val threadSeq = reader.readInt
+          val depth = reader.readInt
+          dumpVisitor.gcRootJavaFrame(id,threadSeq,depth)
+        case HPROF_GC_ROOT_NATIVE_STACK =>
+          val id = reader.readHeapId
+          val threadSeq = reader.readInt
+          dumpVisitor.gcRootNativeStack(id,threadSeq)
+        case HPROF_GC_ROOT_STICKY_CLASS =>
+          val id = reader.readID
+          dumpVisitor.gcRootStickyClass(id)
+        case HPROF_GC_ROOT_THREAD_BLOCK =>
+          val id = reader.readID
+          val threadSeq = reader.readInt
+          dumpVisitor.gcRootThreadBlock(id,threadSeq)
+        case HPROF_GC_ROOT_MONITOR_USED =>
+          val id = reader.readID
+          dumpVisitor.gcRootMonitorUsed(id)
         case HPROF_GC_OBJ_ARRAY_DUMP =>
           val id = reader.readHeapId
           val stackTraceSerialId = reader.readInt
@@ -292,7 +292,8 @@ class HprofReader(fileName: String) extends Logging {
       c = in.readByte().asInstanceOf[Char]
     }
 
-    val versionStr = new String(buffer.toArray)
+    // trim the version string - seen version 1.0.2 with leading spaces
+    val versionStr = new String(buffer.toArray).trim
 
     if(versionStr == VERSION_1_0_1)
       1

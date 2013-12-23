@@ -7,7 +7,7 @@ class JavaValueArray(heapId: HeapId,snapshot : Snapshot,val instanceId : Instanc
                      val clazzId : HeapId,val size : Int,fieldType : FieldType,
                      val data : Seq[AnyVal]) extends JavaHeapObject(heapId,Some(instanceId),snapshot) {
 
-  override def getClazz: JavaClass = clazzId.getOpt(snapshot).get.asInstanceOf[JavaClass]
+  override def getClazz: JavaClass = clazzId.getOpt.get.asInstanceOf[JavaClass]
 
   override def resolve(snapshot: Snapshot) {
     getClazz.addInstance(this)

@@ -46,7 +46,7 @@ class HistogramPage(snapshot : Snapshot,sortParam : String) extends AbstractPage
             tableData(out.println(clazz._3))
             val instanceRetained = clazz._1.instanceRetained
             tableData("" + instanceRetained)
-            val instanceCount = clazz._1.getInstancesCount(false)
+            val instanceCount = clazz._1.getInstancesCount(includeSubclasses = false)
             val retainedInstSize = if(instanceCount == 0) "-"
             else if(instanceRetained == 0) "0"
             else "" + instanceRetained/instanceCount

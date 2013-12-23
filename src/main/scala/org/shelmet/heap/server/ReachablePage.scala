@@ -8,7 +8,8 @@ class ReachablePage(snapshot : Snapshot,query : String) extends AbstractPage(sna
     html("Objects Reachable From " + query) {
       val id = HeapId(parseHex(query))
 
-      val root: JavaHeapObject = id.getOpt(snapshot).get
+      // TODO This should handle the not found case rather than exception
+      val root: JavaHeapObject = id.get
       val ro: ReachableObjects = ReachableObjects.find(root)
       val totalSize: Long = ro.totalSize
       val things = ro.reachables

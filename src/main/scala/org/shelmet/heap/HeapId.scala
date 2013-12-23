@@ -8,6 +8,6 @@ case class HeapId(id : Long) extends Ordered[HeapId] {
   def compare(that: HeapId): Int = id.compareTo(that.id)
 
   def isNull = id == 0
-  def getOpt(implicit snapshot : Snapshot) : Option[JavaHeapObject] = snapshot.findHeapObject(this)
-  def get(implicit snapshot : Snapshot) : JavaHeapObject = getOpt.get
+  def getOpt : Option[JavaHeapObject] = Snapshot.instance.findHeapObject(this)
+  def get : JavaHeapObject = getOpt.get
 }

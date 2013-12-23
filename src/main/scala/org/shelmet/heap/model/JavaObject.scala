@@ -13,19 +13,19 @@ class JavaObject(id: HeapId, snapshotV: Snapshot,val instanceId : InstanceId,cla
   var minDepth = -1
   var maxDepth = -1
 
-  override def getClazz: JavaClass = classId.getOpt(snapshot).get.asInstanceOf[JavaClass]
+  override def getClazz: JavaClass = classId.get.asInstanceOf[JavaClass]
 
-  override def size: Int = snapshot.getMinimumObjectSize + fieldsLength
+  override def size: Int = Snapshot.instance.getMinimumObjectSize + fieldsLength
 
   override def resolve(snapshot: Snapshot) {
     resolvedFields.length // force the resolution of heap objects
     getClazz.addInstance(this)
   }
 
-  private def resolvedFields = fieldValues.map( _ match {
+  private def resolvedFields = fieldValues.map {
     case id : HeapId => id.getOpt.getOrElse(null)
     case x => x
-  })
+  }
 
   def getFieldsAndValues : List[(JavaField,Any)] = {
     getClazz.getFieldsForInstance.zip(resolvedFields)
@@ -45,11 +45,12 @@ class JavaObject(id: HeapId, snapshotV: Snapshot,val instanceId : InstanceId,cla
     }
   }
 
-  lazy val isWeakRefClazz : Boolean = snapshot.weakReferenceClass != null && snapshot.weakReferenceClass.isAssignableFrom(getClazz)
+  lazy val isWeakRefClazz : Boolean = Snapshot.instance.weakReferenceClass != null &&
+    Snapshot.instance.weakReferenceClass.isAssignableFrom(getClazz)
 
   override def refersOnlyWeaklyTo(other: JavaHeapObject): Boolean = {
     if (isWeakRefClazz) {
-      val referentFieldIndex = snapshot.referentFieldIndex
+      val referentFieldIndex = Snapshot.instance.referentFieldIndex
       val size = fieldValues.size
       var idx = 0
       while(idx < size) {

@@ -1,30 +1,29 @@
 package org.shelmet.heap.server
 
-import akka.actor.Actor
+import akka.actor.{ActorLogging, Actor}
 import spray.routing.HttpService
 import spray.http._
 import MediaTypes._
 import org.shelmet.heap.model.Snapshot
 import java.io.{OutputStreamWriter, PrintWriter, ByteArrayOutputStream}
-import spray.routing.directives.LogEntry
-import com.typesafe.scalalogging.slf4j.Logging
-import akka.event.Logging
+import akka.event.LoggingAdapter
 
-class QueryServiceActor(val snapshot: Snapshot) extends Actor with QueryService {
+class QueryServiceActor(val snapshot: Snapshot) extends Actor with QueryService with ActorLogging {
 
   def actorRefFactory = context
   def receive = runRoute(queryRoute)
 }
 
 // this trait defines our service behavior independently from the service actor
-trait QueryService extends HttpService with Logging {
+trait QueryService extends HttpService {
 
+  val log : LoggingAdapter
   val snapshot: Snapshot
 
   val queryRoute = {
     respondWithMediaType(`text/html`) {
       // run each request in a separate thread
-      detachTo(singleRequestServiceActor) {
+      detach() {
         get {
           path("") {
             complete(runQuery(new HomepagePage(snapshot)))
@@ -103,13 +102,15 @@ trait QueryService extends HttpService with Logging {
     val pw = new PrintWriter(new OutputStreamWriter(baos))
     query.setOutput(pw)
     val qs = System.currentTimeMillis()
+    Snapshot.setInstance(snapshot)
     query.run()
+    Snapshot.clearInstance()
     val qe = System.currentTimeMillis()
     println(" query run took: " + (qe -qs))
     pw.flush()
     val res = baos.toString
     val endTime = System.currentTimeMillis()
-    logger.info(s"Request took ${endTime-startTime} ms")
+    log.info(s"Request took ${endTime-startTime} ms")
     res
   }
 }

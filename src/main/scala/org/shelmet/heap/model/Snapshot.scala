@@ -9,6 +9,7 @@ import org.shelmet.heap.HeapId
 import com.typesafe.scalalogging.slf4j.Logging
 import java.util.Date
 import org.shelmet.heap.shared.BaseFieldType
+import java.io.{PrintStream, FileOutputStream}
 
 /**
  * Represents a snapshot of the Java objects in the VM at one instant.
@@ -22,6 +23,7 @@ object Snapshot extends Logging {
 
   def readFromDump(hpr : HprofReader,callStack : Boolean,calculateRefs : Boolean) : Snapshot = {
     val snapshot = new Snapshot()
+    Snapshot.setInstance(snapshot)
     logger.info("Resolving structure")
     val ipdv = new InitialPassDumpVisitor(snapshot,callStack)
     hpr.readFile(ipdv)
@@ -39,8 +41,14 @@ object Snapshot extends Logging {
     logger.info("Calculating retained sizes. (may take a while)")
     snapshot.calculateRetainedSizes()
     logger.info("Snapshot load complete.")
+    Snapshot.clearInstance()
     snapshot
   }
+
+  private val instanceHolder = new ThreadLocal[Snapshot]
+  def instance : Snapshot = Option(instanceHolder.get()).getOrElse(throw new IllegalStateException("Instance not set for query"))
+  def setInstance(snapshot : Snapshot) { instanceHolder.set(snapshot)}
+  def clearInstance() { instanceHolder.set(null)}
 }
 
 class Snapshot extends Logging {
@@ -63,11 +71,24 @@ class Snapshot extends Logging {
   var creationDate : Option[Date] = None
 
 
+  def dumpGraph() {
+
+    val idx = heapObjects.values.map(_.heapId).zipWithIndex.toMap
+    val refs = heapObjects.values.flatMap { obj =>
+      obj.hardRefersSet.toList.map( (_,obj.heapId))
+    }
+
+    val ps = new PrintStream(new FileOutputStream("/tmp/test.txt"))
+    ps.println(refs.map { case (a,b) => s"${idx(a)}->${idx(b)}" }.mkString(","))
+    ps.close()
+  }
+
   // TODO Need up update basic size calculations see:
   //    http://www.javamex.com/tutorials/memory/object_memory_usage.shtml
   //    http://www.javamex.com/tutorials/memory/array_memory_usage.shtml
 
   def calculateRetainedSizes() {
+    dumpGraph()
      val startTime = System.currentTimeMillis()
     var idx = 0
     var secondaryCount = 0
@@ -86,6 +107,7 @@ class Snapshot extends Logging {
       }
     }
 
+
     // sorting furthest from root to nearest speeds up calculation due to reuse of graphs
     heapObjects.values.toList.sortWith{
       case (a,b) =>
@@ -100,7 +122,7 @@ class Snapshot extends Logging {
         val size = obj.size
         val newRefs = rootsetReferencesTo(obj, includeWeak = false)
         if(!newRefs.isEmpty) {
-          val retainingSet = (newRefs.map(_.objectSet).reduce(_.intersect(_))-obj.heapId).map(_.get(this))
+          val retainingSet = (newRefs.map(_.objectSet).reduce(_.intersect(_))-obj.heapId).map(_.get)
 
           retainingSet.foreach( _.retaining += size )
 
@@ -133,7 +155,7 @@ class Snapshot extends Logging {
     var depth = 1
     var toVisit = Set[HeapId]()
     rootsMap.foreach { case (heapId,v) =>
-      heapId.getOpt(this).get.addDepth(depth)
+      heapId.get.addDepth(depth)
       toVisit += heapId
     }
 
@@ -142,7 +164,7 @@ class Snapshot extends Logging {
       var nextToVisit = Set[HeapId]()
       toVisit.foreach { hId =>
         visited += hId
-        hId.getOpt(this).foreach { obj =>
+        hId.getOpt.foreach { obj =>
           obj.visitReferencedObjects({ r =>
             r.addDepth(depth)
             if(!visited.contains(r.heapId)) {
@@ -307,7 +329,7 @@ class Snapshot extends Logging {
     fifo += target.heapId :: Nil
     while (fifo.size > 0) {
       val chain: List[HeapId] = fifo.remove(0)
-      val curr: JavaHeapObject = chain.head.get(this)
+      val curr: JavaHeapObject = chain.head.get
       curr.getRootReferences.foreach { root =>
         result = new CompleteReferenceChain(root,chain) :: result
       }

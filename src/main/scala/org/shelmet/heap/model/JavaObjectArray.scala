@@ -6,7 +6,7 @@ import org.shelmet.heap.shared.InstanceId
 class JavaObjectArray(id : HeapId,snapshot : Snapshot,val instanceId : InstanceId,classId: HeapId,
                       elementIDs : Seq[HeapId]) extends JavaHeapObject(id,Some(instanceId),snapshot) {
 
-  override def getClazz: JavaClass = classId.getOpt(snapshot).get.asInstanceOf[JavaClass]
+  override def getClazz: JavaClass = classId.get.asInstanceOf[JavaClass]
 
   override def size: Int = snapshot.getMinimumObjectSize + elementIDs.length * snapshot.identifierSize
 
@@ -23,12 +23,10 @@ class JavaObjectArray(id : HeapId,snapshot : Snapshot,val instanceId : InstanceI
 
   override def visitReferencedObjects(visit : JavaHeapObject => Unit,includeStatics : Boolean = true) {
     super.visitReferencedObjects(visit,includeStatics)
-    for (element <- elements) {
-      element match {
-        case jho : JavaHeapObject =>
-          visit(jho)
-        case _ =>
-      }
+    for (element <- elements) element match {
+      case jho : JavaHeapObject =>
+        visit(jho)
+      case _ =>
     }
   }
 

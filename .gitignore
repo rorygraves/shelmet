@@ -9,3 +9,6 @@
 target/
 project/target
 src/test/resources/actual/
+.cache
+.classpath
+.project

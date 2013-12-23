@@ -334,10 +334,10 @@ class ObjectPage(snapshot : Snapshot,query : String) extends AbstractPage(snapsh
     val id: Long = obj.heapId.id
     out.println("<ul>")
     out.println("<li>")
-    printAnchor("objectRootsExcWeak/" + hexString(id),"Exclude weak refs")
+    printAnchor(s"objectRootsExcWeak/${hexString(id)}","Exclude weak refs")
     out.println("</li>")
     out.println("<li>")
-    printAnchor("objectRootsIncWeak/" + hexString(id),"Include weak refs")
+    printAnchor(s"objectRootsIncWeak/${hexString(id)}","Include weak refs")
     out.println("</li>")
     out.println("</ul>")
 
