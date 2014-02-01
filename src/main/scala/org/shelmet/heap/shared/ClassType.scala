@@ -6,8 +6,9 @@ object ClassType {
     // [[I
     // [Lcom.foo.Bar;
     // com.foo.Bar
-
-    if(sig.startsWith("[")) {
+    if (sig.contains("/"))
+      parse(sig.replace("/", "."))
+    else if (sig.startsWith("[")) {
       val subType = sig.drop(1)
       val containedTypeChar = subType.charAt(0)
       if(containedTypeChar == '[') {
