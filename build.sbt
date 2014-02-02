@@ -35,6 +35,8 @@ libraryDependencies += "com.googlecode.matrix-toolkits-java" % "mtj" % "1.0.1" i
 
 libraryDependencies += "com.google.guava" % "guava" % "16.0"
 
+libraryDependencies += "net.sf.trove4j" % "trove4j" % "3.0.3"
+
 libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.2.3"
 
 libraryDependencies += "com.typesafe.akka" % "akka-slf4j_2.10" % "2.2.3"

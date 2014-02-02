@@ -2,9 +2,7 @@ package org.shelmet.heap.parser
 
 import com.typesafe.scalalogging.slf4j.Logging
 import scala.collection.mutable
-import no.uib.cipr.matrix.sparse.LinkedMatrix
 import org.shelmet.heap.shared.{FieldType, BaseFieldType, ClassType}
-import scala.Some
 import org.shelmet.heap.HeapId
 import com.google.common.base.Stopwatch
 
@@ -56,8 +54,8 @@ case class Clazz(name: ClassType, fields: List[Field]) {
 
 object SparseLinkStructure extends App with Logging {
 
-  //    val reader = new HprofReader("intellij.hprof")
-  val reader = new HprofReader("heap.bin")
+      val reader = new HprofReader("intellij.hprof")
+//  val reader = new HprofReader("heap.bin")
 
   val watch = Stopwatch.createStarted()
   reader.readFile(new DumpVisitor {})
@@ -182,16 +180,28 @@ class LinkingVisitor(val forward: IndexedSeq[Ref],
                      val backward: Map[Ref, Index],
                      val classes: Map[ClassId, Clazz]) extends DumpVisitor with Logging {
 
-  private val links = new LinkedMatrix(forward.size)
+//  private val links = new LinkedMatrix(forward.size)
+
+//  private var links = List[(Ref, Ref)]()
+
+//  private val links = new TLongObjectHashMap[Set[Ref]]()
+
+  private val links = new mutable.HashMap[Ref, mutable.Set[Ref]] with mutable.MultiMap[Ref, Ref]
 
   var missing = Map[String, Int]() withDefault (f => 0)
 
-
   var count = 0
+
+//  def count = links.size
 
   private def add(from: Ref, to: Ref)(fail: => String) {
     try {
-      links.set(backward(from).id, backward(to).id, 1.0)
+//      links.set(backward(from).id, backward(to).id, 1.0)
+//      links = (from, to) :: links
+//      links.put(from.id, to.id)
+
+      links.addBinding(from, to)
+
       count += 1
       if (count % 100000 == 0)
         logger.info(count + " links")
