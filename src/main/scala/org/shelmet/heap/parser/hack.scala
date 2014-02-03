@@ -1,7 +1,5 @@
 package org.shelmet.heap.parser
 
-import Runtime.getRuntime
-import scala.concurrent.Lock
 
 //import no.uib.cipr.matrix.sparse.LinkedSparseMatrix
 //
@@ -52,7 +50,7 @@ class LinkedMatrix(size: Int) {
   }
   rows(0).colTail = cols(1)
   cols(size - 1).colTail = rows(1)
-  cols(0) = null
+//  cols(0) = null
 
   def get(row: Int, col: Int): Double = {
     require(row >= 0 && col >= 0)
@@ -70,61 +68,45 @@ class LinkedMatrix(size: Int) {
     }
   }
 
-  private val cpus = getRuntime.availableProcessors
-  // could synchronize on the rows/cols instead
-  private val rowLocks = Array.fill(cpus) { new Lock }
-  private val colLocks = Array.fill(cpus) { new Lock }
-
-  private def acquire(row: Int, col: Int): (Lock, Lock) = {
-    (rowLocks(row % cpus), colLocks(col % cpus)) withEffect { p =>
-      p._1.acquire()
-      p._2.acquire()
-    }
-  }
-
-  private def release(locks: (Lock, Lock)) {
-    locks._2.release()
-    locks._1.release()
-  }
-
   def set(row: Int, col: Int, value: Double) {
     require(row >= 0 && col >= 0)
     require(row < size && col < size)
 
-    val locks = acquire(row, col)
-    try {
-      if (col == 0) rows(row).value = value
-      else if (row == 0) cols(col).value = value
-      else findWithColNeighbours(row, col) match {
-        /*
-        Rules are that we should *always* have a left (up) neighbour on the same row (col) (because
-        zeroth rows/columns are treated separately)
-        but the right (down) neighbour might be null or on a different row (col). The left (up)
-        neighbour may be modified, but we must not mutate the right (down) neighbour.
-        */
-        case (up, Some(existing), down) if value == 0 =>
-          findWithRowNeighbours(row, col) match {
-            case (left, Some(_), right) =>
-              up.colTail = down
-              left.rowTail = right
-            case _ => throw new IllegalStateException
+    rows(row) synchronized {
+      cols(col) synchronized {
+        try {
+          if (col == 0) rows(row).value = value
+          else if (row == 0) cols(col).value = value
+          else findWithColNeighbours(row, col) match {
+            /*
+            Rules are that we should *always* have a left (up) neighbour on the same row (col) (because
+            zeroth rows/columns are treated separately)
+            but the right (down) neighbour might be null or on a different row (col). The left (up)
+            neighbour may be modified, but we must not mutate the right (down) neighbour.
+            */
+            case (up, Some(existing), down) if value == 0 =>
+              findWithRowNeighbours(row, col) match {
+                case (left, Some(_), right) =>
+                  up.colTail = down
+                  left.rowTail = right
+                case _ => throw new IllegalStateException
+              }
+
+            case (up, Some(existing), down) => existing.value = value
+            case (up, None, down) if value == 0 =>
+
+            case (up, None, down) =>
+              findWithRowNeighbours(row, col) match {
+                case (left, None, right) =>
+                  val insert = new Node(row, col, value, right, down)
+                  up.colTail = insert
+                  left.rowTail = insert
+
+                case _ => throw new IllegalStateException
+              }
           }
-
-        case (up, Some(existing), down) => existing.value = value
-        case (up, None, down) if value == 0 =>
-
-        case (up, None, down) =>
-          findWithRowNeighbours(row, col) match {
-            case (left, None, right) =>
-              val insert = new Node(row, col, value, right, down)
-              up.colTail = insert
-              left.rowTail = insert
-
-            case _ => throw new IllegalStateException
-          }
+        }
       }
-    } finally {
-      release(locks)
     }
   }
 

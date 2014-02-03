@@ -5,9 +5,10 @@ import scala.collection.mutable
 import org.shelmet.heap.shared.{FieldType, BaseFieldType, ClassType}
 import org.shelmet.heap.HeapId
 import com.google.common.base.Stopwatch
-import scala.concurrent.{Await, Future}
-import scala.concurrent.duration.Duration
+import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
+import java.util.concurrent.{Semaphore, Phaser}
+import java.util.concurrent.atomic.AtomicLong
 
 // value classes for Correctness of indexes
 // TODO: move to DumpVisitor
@@ -57,7 +58,7 @@ case class Clazz(name: ClassType, fields: List[Field]) {
 
 object SparseLinkStructure extends App with Logging {
 
-      val reader = new HprofReader("intellij.hprof")
+        val reader = new HprofReader("intellij.hprof")
 //  val reader = new HprofReader("heap.bin")
 
   val watch = Stopwatch.createStarted()
@@ -77,7 +78,11 @@ object SparseLinkStructure extends App with Logging {
   val linkingVisitor = LinkingVisitor(lookups)
   reader.readFile(linkingVisitor)
 
-  Await.result(Future.sequence(linkingVisitor.waiting), Duration.Inf)
+  // something quick so I can go to bed...
+  while (linkingVisitor.latch.get() != 0) {
+    logger.info(linkingVisitor.latch.get() + " still outstanding")
+    Thread.sleep(1000)
+  }
 
   logger.info("LINKING pass took " + watch)
 
@@ -188,38 +193,39 @@ class LinkingVisitor(val forward: IndexedSeq[Ref],
 
   private val links = new LinkedMatrix(forward.size)
 
-//  private var links = List[(Ref, Ref)]()
+  //  private var links = List[(Ref, Ref)]()
 
-//  private val links = new TLongObjectHashMap[Set[Ref]]()
+  //  private val links = new TLongObjectHashMap[Set[Ref]]()
 
-//  private val links = new mutable.HashMap[Ref, mutable.Set[Ref]] with mutable.MultiMap[Ref, Ref]
+  //  private val links = new mutable.HashMap[Ref, mutable.Set[Ref]] with mutable.MultiMap[Ref, Ref]
 
   var missing = Map[String, Int]() withDefault (f => 0)
 
   var count = 0
 
-  var waiting = List[Future[Boolean]]()
+  var latch = new AtomicLong(0)
 
-//  def count = links.size
+  //  def count = links.size
 
   private def add(from: Ref, to: Ref)(fail: => String) {
-    try {
-      waiting = Future {
+    latch.getAndIncrement
+
+    Future {
+      try {
         links.set(backward(from).id, backward(to).id, 1.0)
-        true
-      } :: waiting
-//      links = (from, to) :: links
-//      links.put(from.id, to.id)
-//      links.addBinding(from, to)
+        //      links = (from, to) :: links
+        //      links.put(from.id, to.id)
+        //      links.addBinding(from, to)
+        count += 1
+        if (count % 100000 == 0)
+          logger.info(count + " links")
 
-      count += 1
-      if (count % 100000 == 0)
-        logger.info(count + " links")
-
-    } catch {
-      case _: NoSuchElementException =>
-        val failed = fail
-        missing += (failed -> (missing(failed) + 1))
+      } catch {
+        case _: NoSuchElementException =>
+          val failed = fail
+          missing += (failed -> (missing(failed) + 1))
+      }
+      finally latch.decrementAndGet()
     }
   }
 
