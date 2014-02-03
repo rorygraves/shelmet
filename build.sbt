@@ -31,7 +31,7 @@ libraryDependencies += "io.spray" % "spray-can" % "1.2.0"
 libraryDependencies += "io.spray" % "spray-routing" % "1.2.0"
 
 // we don't touch the netlib-java parts
-libraryDependencies += "com.googlecode.matrix-toolkits-java" % "mtj" % "1.0.1" intransitive()
+libraryDependencies += "com.googlecode.matrix-toolkits-java" % "mtj" % "1.0.2-SNAPSHOT" intransitive()
 
 libraryDependencies += "com.google.guava" % "guava" % "16.0"
 
