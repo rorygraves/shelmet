@@ -1,7 +1,6 @@
 package org.shelmet.heap.parser
 
 import com.typesafe.scalalogging.slf4j.Logging
-import org.shelmet.heap.LinkedMatrix
 import scala.util.Random._
 import org.scalatest.FunSuite
 
@@ -18,4 +17,23 @@ class LinkedMatrixTest extends FunSuite with Logging {
     }
   }
 
+  test("parallel set with serial get") {
+    val matrix = new LinkedMatrix(1000)
+    val indices = {
+      (1 to 10000) map { i =>
+        (nextInt(1000), nextInt(1000))
+      }
+    }.toSet
+    val expected = {
+      indices.par map { case (row, col) =>
+        val value = nextGaussian()
+        ((row, col) -> value) withEffect { _ =>
+          matrix.set(row, col, value)
+        }
+      }
+    }.seq
+    expected foreach { case ((row, col), value) =>
+      assert(matrix.get(row, col) == value, (row, col))
+    }
+  }
 }

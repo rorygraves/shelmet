@@ -1,5 +1,7 @@
-package org.shelmet.heap
+package org.shelmet.heap.parser
 
+import Runtime.getRuntime
+import scala.concurrent.Lock
 
 //import no.uib.cipr.matrix.sparse.LinkedSparseMatrix
 //
@@ -15,6 +17,18 @@ package org.shelmet.heap
 //  }
 //}
 //
+
+object `package` {
+
+  class PimpedEffects[T](val a: T) extends AnyVal {
+    def withEffect(effect: T => Unit): T = {
+      effect(a)
+      a
+    }
+  }
+
+  implicit def pimpedEffect[T](a: T) = new PimpedEffects(a)
+}
 
 // mutable, but allows concurrent set
 class LinkedMatrix(size: Int) {
@@ -56,39 +70,61 @@ class LinkedMatrix(size: Int) {
     }
   }
 
+  private val cpus = getRuntime.availableProcessors
+  // could synchronize on the rows/cols instead
+  private val rowLocks = Array.fill(cpus) { new Lock }
+  private val colLocks = Array.fill(cpus) { new Lock }
+
+  private def acquire(row: Int, col: Int): (Lock, Lock) = {
+    (rowLocks(row % cpus), colLocks(col % cpus)) withEffect { p =>
+      p._1.acquire()
+      p._2.acquire()
+    }
+  }
+
+  private def release(locks: (Lock, Lock)) {
+    locks._2.release()
+    locks._1.release()
+  }
+
   def set(row: Int, col: Int, value: Double) {
     require(row >= 0 && col >= 0)
     require(row < size && col < size)
 
-    if (col == 0) rows(row).value = value
-    else if (row == 0) cols(col).value = value
-    else findWithColNeighbours(row, col) match {
-      /*
-      Rules are that we should *always* have a left (up) neighbour on the same row (col) (because
-      zeroth rows/columns are treated separately)
-      but the right (down) neighbour might be null or on a different row (col). The left (up)
-      neighbour may be modified, but we must not mutate the right (down) neighbour.
-      */
-      case (up, Some(existing), down) if value == 0 =>
-        findWithRowNeighbours(row, col) match {
-          case (left, Some(_), right) =>
-            up.colTail = down
-            left.rowTail = right
-          case _ => throw new IllegalStateException
-        }
+    val locks = acquire(row, col)
+    try {
+      if (col == 0) rows(row).value = value
+      else if (row == 0) cols(col).value = value
+      else findWithColNeighbours(row, col) match {
+        /*
+        Rules are that we should *always* have a left (up) neighbour on the same row (col) (because
+        zeroth rows/columns are treated separately)
+        but the right (down) neighbour might be null or on a different row (col). The left (up)
+        neighbour may be modified, but we must not mutate the right (down) neighbour.
+        */
+        case (up, Some(existing), down) if value == 0 =>
+          findWithRowNeighbours(row, col) match {
+            case (left, Some(_), right) =>
+              up.colTail = down
+              left.rowTail = right
+            case _ => throw new IllegalStateException
+          }
 
-      case (up, Some(existing), down) => existing.value = value
-      case (up, None, down) if value == 0 =>
+        case (up, Some(existing), down) => existing.value = value
+        case (up, None, down) if value == 0 =>
 
-      case (up, None, down) =>
-        findWithRowNeighbours(row, col) match {
-          case (left, None, right) =>
-            val insert = new Node(row, col, value, right, down)
-            up.colTail = insert
-            left.rowTail = insert
+        case (up, None, down) =>
+          findWithRowNeighbours(row, col) match {
+            case (left, None, right) =>
+              val insert = new Node(row, col, value, right, down)
+              up.colTail = insert
+              left.rowTail = insert
 
-          case _ => throw new IllegalStateException
-        }
+            case _ => throw new IllegalStateException
+          }
+      }
+    } finally {
+      release(locks)
     }
   }
 
@@ -109,6 +145,7 @@ class LinkedMatrix(size: Int) {
   }
 
   private def findPreviousOnRow(row: Int, col: Int): Node = {
+    assert(row > 0 && col > 0)
     var latest = rows(row)
     assert(latest.row == row)
     while (latest.rowTail != null && latest.rowTail.row == row && latest.rowTail.col < col) {
@@ -118,6 +155,7 @@ class LinkedMatrix(size: Int) {
   }
 
   private def findPreviousOnCol(row: Int, col: Int): Node = {
+    assert(row > 0 && col > 0)
     var latest = cols(col)
     assert(latest.col == col)
     while (latest.colTail != null && latest.colTail.col == col && latest.colTail.row < row) {
