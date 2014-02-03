@@ -43,4 +43,6 @@ libraryDependencies += "com.typesafe.akka" % "akka-slf4j_2.10" % "2.2.3"
 
 libraryDependencies += "com.typesafe.akka" %% "akka-testkit" % "2.2.3" % "test"
 
+libraryDependencies += "org.specs2" %% "specs2" % "2.2.3" % "test"
+
 net.virtualvoid.sbt.graph.Plugin.graphSettings
