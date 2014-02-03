@@ -87,29 +87,11 @@ class InitialPassDumpVisitor(snapshot : Snapshot,callStack: Boolean) extends Abs
                          staticItems : List[ClassStaticEntry],
                          fieldItems : List[ClassFieldEntry]) {
     classCount += 1
-    val classSig = classNameFromObjectID.get(id) match {
-      case Some(n) => n
-      case None =>
-        logger.warn("Class name not found for {}",id.toHex)
-        s"unknown-name@${id.toHex}"
-    }
-
-    val className = ClassType.parse(classSig).toString
-
-    val statics = staticItems.map { se =>
-        val fieldName = getNameFromID(se.nameId)
-        val f = new JavaField(fieldName,className + "." + fieldName,se.itemType)
-        new JavaStatic(snapshot,f, se.value)
-    }
-
+    val className = classNameFromObjectId(id)
+    val statics = readStatics(className,staticItems)
     val stackTrace = getStackTraceFromSerial(stackTraceSerialId)
-
-    val fields = fieldItems.map {
-      fi =>
-        val fieldName = getNameFromID(fi.nameId)
-        new JavaField(fieldName,className + "." + fieldName,fi.itemType)
-    }
-    val c = new JavaClass(snapshot,id,className,superClassId,classLoaderId,signerId,protDomainId,statics,instanceSize,fields)
+    val fields = readFields(className,fieldItems)
+    val c = new JavaClass(id,className,superClassId,classLoaderId,signerId,protDomainId,statics,instanceSize,fields)
     snapshot.addClass(id, c)
     snapshot.setSiteTrace(c, stackTrace)
   }

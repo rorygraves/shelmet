@@ -1,13 +1,13 @@
 package org.shelmet.heap.model.create
 
-import org.shelmet.heap.parser.DumpVisitor
+import org.shelmet.heap.parser.{ClassFieldEntry, ClassStaticEntry, DumpVisitor}
 import org.shelmet.heap.util.Misc._
 import scala.Some
 import java.io.IOException
-import org.shelmet.heap.model.{StackFrame, StackTrace}
+import org.shelmet.heap.model.{JavaField, JavaStatic, StackFrame, StackTrace}
 import org.shelmet.heap.HeapId
 import com.typesafe.scalalogging.slf4j.Logging
-import org.shelmet.heap.shared.InstanceId
+import org.shelmet.heap.shared.{ClassType, InstanceId}
 
 class AbstractDumpVisitor(callStack: Boolean) extends DumpVisitor with Logging {
 
@@ -85,6 +85,33 @@ class AbstractDumpVisitor(callStack: Boolean) extends DumpVisitor with Logging {
       } else lineNumber
 
       stackFrames += (id -> new StackFrame(methodName, methodSig, className, sourceFile, adjLineNo))
+    }
+  }
+
+  def classNameFromObjectId(id : HeapId) : String = {
+    val classSig = classNameFromObjectID.get(id) match {
+      case Some(n) => n
+      case None =>
+        logger.warn("Class name not found for {}",id.toHex)
+        s"unknown-name@${id.toHex}"
+    }
+
+    ClassType.parse(classSig).toString
+  }
+
+  def readStatics(className : String,staticItems : List[ClassStaticEntry]) : List[JavaStatic] = {
+    staticItems.map { se =>
+      val fieldName = getNameFromID(se.nameId)
+      val f = new JavaField(fieldName,className + "." + fieldName,se.itemType)
+      new JavaStatic(f, se.value)
+    }
+  }
+
+  def readFields(className : String,fieldItems : List[ClassFieldEntry]) : List[JavaField] = {
+    fieldItems.map {
+      fi =>
+        val fieldName = getNameFromID(fi.nameId)
+        new JavaField(fieldName,className + "." + fieldName,fi.itemType)
     }
   }
 }

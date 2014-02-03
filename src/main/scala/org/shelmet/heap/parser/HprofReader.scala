@@ -275,9 +275,8 @@ class HprofReader(fileName: String) extends Logging {
           dumpVisitor.objectArrayDump(id,stackTraceSerialId,numElements,elementClassID,elements)
         case HPROF_GC_PRIM_ARRAY_DUMP =>
           readPrimitiveArray(reader,dumpVisitor)
-        case _ => {
+        case _ =>
           throw new IOException("Unrecognized heap dump sub-record type:  " + itemType)
-        }
       }
     }
 

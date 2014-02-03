@@ -3,8 +3,7 @@ package org.shelmet.heap.model
 import org.shelmet.heap.HeapId
 import org.shelmet.heap.shared.ClassType
 
-class JavaClass(snapshotV : Snapshot,
-                heapId: HeapId,
+class JavaClass(heapId: HeapId,
                 val name: String,
                 val superClassId : HeapId,
                 val loaderClassId : HeapId,
@@ -13,7 +12,7 @@ class JavaClass(snapshotV : Snapshot,
                 statics: List[JavaStatic],
                 instanceSize: Int,
                 val fields : List[JavaField]
-                ) extends JavaHeapObject(heapId,None,snapshotV) {
+                ) extends JavaHeapObject(heapId,None) {
 
   def getPackage = {
     if (name.contains("["))
@@ -57,7 +56,7 @@ class JavaClass(snapshotV : Snapshot,
   }
 
 
-  lazy val instanceRetained : Long = getInstances(false).map(_.retainedSize).sum
+  lazy val instanceRetained : Long = getInstances(includeSubclasses = false).map(_.retainedSize).sum
 
   private var instanceRefs : Set[HeapId] = Set.empty
 
@@ -89,10 +88,10 @@ class JavaClass(snapshotV : Snapshot,
    * @return a count of the instances of this class
    */
   def getInstancesCount(includeSubclasses: Boolean): Int = {
-    if(includeSubclasses == false)
-      instanceRefs.size
-    else
+    if(includeSubclasses)
       getInstances(includeSubclasses).size
+    else
+      instanceRefs.size
   }
 
   def getSubclasses: Set[JavaClass] = subclassRefs.map(_.get.asInstanceOf[JavaClass])

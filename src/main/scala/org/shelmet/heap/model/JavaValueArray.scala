@@ -3,9 +3,9 @@ package org.shelmet.heap.model
 import org.shelmet.heap.shared._
 import org.shelmet.heap.HeapId
 
-class JavaValueArray(heapId: HeapId,snapshot : Snapshot,val instanceId : InstanceId,
+class JavaValueArray(heapId: HeapId,val instanceId : InstanceId,
                      val clazzId : HeapId,val size : Int,fieldType : FieldType,
-                     val data : Seq[AnyVal]) extends JavaHeapObject(heapId,Some(instanceId),snapshot) {
+                     val data : Seq[AnyVal]) extends JavaHeapObject(heapId,Some(instanceId)) {
 
   override def getClazz: JavaClass = clazzId.getOpt.get.asInstanceOf[JavaClass]
 

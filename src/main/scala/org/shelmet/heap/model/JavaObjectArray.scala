@@ -3,14 +3,14 @@ package org.shelmet.heap.model
 import org.shelmet.heap.HeapId
 import org.shelmet.heap.shared.InstanceId
 
-class JavaObjectArray(id : HeapId,snapshot : Snapshot,val instanceId : InstanceId,classId: HeapId,
-                      elementIDs : Seq[HeapId]) extends JavaHeapObject(id,Some(instanceId),snapshot) {
+class JavaObjectArray(id : HeapId,val instanceId : InstanceId,classId: HeapId,
+                      elementIDs : Seq[HeapId]) extends JavaHeapObject(id,Some(instanceId)) {
 
   override def getClazz: JavaClass = classId.get.asInstanceOf[JavaClass]
 
-  override def size: Int = snapshot.getMinimumObjectSize + elementIDs.length * snapshot.identifierSize
+  override def size: Int = Snapshot.instance.getMinimumObjectSize + elementIDs.length * Snapshot.instance.identifierSize
 
-  lazy val elements : List[JavaHeapObject] = elementIDs.map(hid => snapshot.findHeapObject(hid).getOrElse(null)).toList
+  lazy val elements : List[JavaHeapObject] = elementIDs.map(hid => Snapshot.instance.findHeapObject(hid).getOrElse(null)).toList
 
   override def resolve(snapshot: Snapshot) {
     getClazz.addInstance(this)

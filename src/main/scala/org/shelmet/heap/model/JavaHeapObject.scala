@@ -10,7 +10,8 @@ import scala.collection.SortedSet
  * memory in the VM.  It can be a
  * JavaClass, a JavaObjectArray, a JavaValueArray or a JavaObject.
  */
-abstract class JavaHeapObject(val heapId : HeapId,val objIdent : Option[InstanceId],snapshotV : Snapshot) extends Ordered[JavaHeapObject] {
+abstract class JavaHeapObject(val heapId : HeapId,val objIdent : Option[InstanceId]) extends Ordered[JavaHeapObject] with
+Serializable {
 
   var hardRefersSet : SortedSet[HeapId] = SortedSet.empty
   var softRefersSet : SortedSet[HeapId] = SortedSet.empty

@@ -25,15 +25,15 @@ object Main extends Logging {
            |        Pass <flag> directly to the runtime system. For")
            |        example, -J-mx512m to use a maximum heap size of 512MB")""".stripMargin)
     opt[Int]('p', "port") action { (x, c) =>
-      c.copy(port = x) } text(s"Set the port for the HTTP server.  Defaults to ${Config.DEFAULT_HTTP_PORT}")
+      c.copy(port = x) } text s"Set the port for the HTTP server.  Defaults to ${Config.DEFAULT_HTTP_PORT}"
     opt[Unit]("noStack") action { (_, c) =>
-      c.copy(trackObjectAllocationStacks = false) } text("Turn off tracking object allocation call stack.")
+      c.copy(trackObjectAllocationStacks = false) } text "Turn off tracking object allocation call stack."
     opt[Unit]("noRefs") action { (_, c) =>
-      c.copy(trackReferencesToObjects = false) } text("Turn off tracking of references to objects")
-    help("help") text("Displays the programming command line options")
-    version("version") text("Displays the program version")
-    arg[java.io.File]("<heapFile>") required() maxOccurs(1) action { (x,c) =>
-      c.copy(dumpFile = x) } text("The heap dump file to read")
+      c.copy(trackReferencesToObjects = false) } text "Turn off tracking of references to objects"
+    help("help") text "Displays the programming command line options"
+    version("version") text "Displays the program version"
+    arg[java.io.File]("<heapFile>") required() maxOccurs 1 action { (x,c) =>
+      c.copy(dumpFile = x) } text "The heap dump file to read"
   }
 
   def main(args: Array[String]) {

@@ -125,14 +125,14 @@ abstract class AbstractPage(snapshot : Snapshot) {
                   |                <a href="#" class="dropdown-toggle" data-toggle="dropdown">Reports<b class="caret"></b></a>
                   |                <ul class="dropdown-menu">
                   |                  <li class="nav-header">Classes</li>
-                  |                  <li><a href="/allClassesWithPlatform/">Including platform</a></li>
-                  |                  <li><a href="/allClassesWithoutPlatform/">Excluding platform</a></li>
+                  |                  <li><a href="/allClassesWithPlatform">Including platform</a></li>
+                  |                  <li><a href="/allClassesWithoutPlatform">Excluding platform</a></li>
                   |                  <li class="divider"></li>
                   |                  <li><a href="/rootSet">RootSet</a></li>
                   |                  <li class="divider"></li>
                   |                  <li class="nav-header">Instance Counts</li>
-                  |                  <li><a href="/showInstanceCountsIncPlatform/">Including platform</a></li>
-                  |                  <li><a href="/showInstanceCountsExcPlatform/">Excluding platform</a></li>
+                  |                  <li><a href="/showInstanceCountsIncPlatform">Including platform</a></li>
+                  |                  <li><a href="/showInstanceCountsExcPlatform">Excluding platform</a></li>
                   |                  <li class="divider"></li>
                   |                  <li><a href="/histogram/">Heap histogram</a></li>
                   |                  <li class="divider"></li>

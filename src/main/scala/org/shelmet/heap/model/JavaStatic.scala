@@ -5,7 +5,7 @@ import org.shelmet.heap.HeapId
 /**
  * Represents the value of a static field of a JavaClass
  */
-class JavaStatic(val snapshot : Snapshot,val field: JavaField,private val value: Any) {
+class JavaStatic(val field: JavaField,private val value: Any) extends Serializable {
 
   def resolve(clazz: JavaClass, snapshot: Snapshot) {
     value match {
@@ -19,7 +19,7 @@ class JavaStatic(val snapshot : Snapshot,val field: JavaField,private val value:
   }
 
   def getValue: Any = value match {
-    case h : HeapId => snapshot.findHeapObject(h).getOrElse(null)
+    case h : HeapId => Snapshot.instance.findHeapObject(h).getOrElse(null)
     case other => other
   }
 }

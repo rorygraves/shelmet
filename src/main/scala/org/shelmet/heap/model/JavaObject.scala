@@ -8,7 +8,7 @@ import org.shelmet.heap.shared.InstanceId
  * @param fieldsLength The length of the field values (in bytes)
  */
 class JavaObject(id: HeapId, snapshotV: Snapshot,val instanceId : InstanceId,classId : HeapId,
-                 val fieldValues : Vector[Any],fieldsLength : Int) extends JavaHeapObject(id,Some(instanceId),snapshotV) {
+                 val fieldValues : Vector[Any],fieldsLength : Int) extends JavaHeapObject(id,Some(instanceId)) {
 
   var minDepth = -1
   var maxDepth = -1

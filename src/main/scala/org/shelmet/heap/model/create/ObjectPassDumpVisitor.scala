@@ -12,7 +12,7 @@ class ObjectPassDumpVisitor(snapshot : Snapshot,callStack: Boolean) extends Abst
     val classId = snapshot.getPrimitiveArrayClass(fieldType).heapId
     val instanceId = getInstanceId(classId)
 
-    val va = new JavaValueArray(heapId,snapshot,instanceId,classId,objectSize,fieldType,data)
+    val va = new JavaValueArray(heapId,instanceId,classId,objectSize,fieldType,data)
     snapshot.addHeapObject(heapId, va)
 
     val stackTrace = getStackTraceFromSerial(stackTraceSerialID)
@@ -42,7 +42,7 @@ class ObjectPassDumpVisitor(snapshot : Snapshot,callStack: Boolean) extends Abst
                                values : Seq[HeapId]) {
     val stackTrace = getStackTraceFromSerial(stackTraceSerialId)
     val instanceId = getInstanceId(classId)
-    val arr = new JavaObjectArray(heapId,snapshot,instanceId,classId,values)
+    val arr = new JavaObjectArray(heapId,instanceId,classId,values)
     snapshot.addHeapObject(heapId, arr)
     snapshot.setSiteTrace(arr, stackTrace)
   }

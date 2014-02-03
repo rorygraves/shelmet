@@ -9,7 +9,8 @@ import org.shelmet.heap.HeapId
 import com.typesafe.scalalogging.slf4j.Logging
 import java.util.Date
 import org.shelmet.heap.shared.BaseFieldType
-import java.io.{PrintStream, FileOutputStream}
+import java.io.{ObjectOutputStream, ByteArrayOutputStream, PrintStream, FileOutputStream}
+import java.util.zip.GZIPOutputStream
 
 /**
  * Represents a snapshot of the Java objects in the VM at one instant.
@@ -18,7 +19,6 @@ import java.io.{PrintStream, FileOutputStream}
  */
 object Snapshot extends Logging {
   val SMALL_ID_MASK: Long = 0x0FFFFFFFFL
-  final val EMPTY_BYTE_ARRAY: Array[Byte] = new Array[Byte](0)
   private val DOT_LIMIT: Int = 5000
 
   def readFromDump(hpr : HprofReader,callStack : Boolean,calculateRefs : Boolean) : Snapshot = {
@@ -42,7 +42,34 @@ object Snapshot extends Logging {
     snapshot.calculateRetainedSizes()
     logger.info("Snapshot load complete.")
     Snapshot.clearInstance()
+    calcAverageStoredSize(snapshot.allObjects)
     snapshot
+  }
+
+  def calcAverageStoredSize(objs : Iterable[JavaHeapObject]) {
+    var totalSize = 0L
+    var count = 0L
+    var smallest  = Integer.MAX_VALUE
+    var largest = Integer.MIN_VALUE
+
+    objs.foreach { obj =>
+      val baos = new ByteArrayOutputStream()
+      val oos = new ObjectOutputStream(new GZIPOutputStream(baos))
+      oos.writeObject(obj)
+      oos.close()
+      val objSize = baos.toByteArray.size
+      if(objSize < smallest)
+        smallest = objSize
+
+      if(objSize > largest)
+        largest = objSize
+      totalSize += objSize
+      count += 1
+    }
+
+    val avgSize = totalSize /count
+    println(s"count = $count, avgSize = $avgSize")
+    println(s"largest = $largest, smallest = $smallest")
   }
 
   private val instanceHolder = new ThreadLocal[Snapshot]
@@ -275,7 +302,7 @@ class Snapshot extends Logging {
           res
         case None =>
           if(createIfMissing) {
-            val obj = new UnknownHeapObject(id,this)
+            val obj = new UnknownHeapObject(id)
             heapObjects += (id -> obj)
             Some(obj)
           } else

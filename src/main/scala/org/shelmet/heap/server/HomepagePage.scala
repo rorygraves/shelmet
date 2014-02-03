@@ -28,19 +28,19 @@ class HomepagePage(snapshot: Snapshot) extends AbstractPage(snapshot) {
         tableRow {
           tableData("No Objects:")
           tableData {
-            printAnchor("showInstanceCountsIncPlatform/","" + snapshot.noObjects)
+            printAnchor("showInstanceCountsIncPlatform","" + snapshot.noObjects)
           }
         }
         tableRow {
           tableData("Classes (including system classes):")
           tableData {
-            printAnchor("allClassesWithPlatform/","" + snapshot.noClasses)
+            printAnchor("allClassesWithPlatform","" + snapshot.noClasses)
           }
         }
         tableRow {
           tableData("User Classes:")
           tableData {
-            printAnchor("allClassesWithoutPlatform/","" + snapshot.noUserClasses)
+            printAnchor("allClassesWithoutPlatform","" + snapshot.noUserClasses)
           }
         }
       }

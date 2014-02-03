@@ -5,8 +5,8 @@ import org.shelmet.heap.HeapId
 /**
  * An as yet unrecognized heap item (or missing from the dump)
  */
-class UnknownHeapObject(id : HeapId,snapshot : Snapshot) extends JavaHeapObject(id,None,snapshot) {
-  override def getClazz: JavaClass = snapshot.javaLangObjectClass
+class UnknownHeapObject(id : HeapId) extends JavaHeapObject(id,None) {
+  override def getClazz: JavaClass = Snapshot.instance.javaLangObjectClass
 
   override def size: Int = 0
 
