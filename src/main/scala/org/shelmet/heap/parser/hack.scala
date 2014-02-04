@@ -1,9 +1,11 @@
 package org.shelmet.heap.parser
 
-import java.util.concurrent.locks.ReentrantLock
+import java.util.concurrent.locks.{ReentrantReadWriteLock, ReentrantLock}
 import scala.collection.immutable.ListSet
 import scala.collection.parallel.mutable
 import scala.collection
+import gnu.trove.impl.hash.TLongIntHash
+import gnu.trove.set.hash.TIntHashSet
 
 
 //import no.uib.cipr.matrix.sparse.LinkedSparseMatrix
@@ -171,22 +173,38 @@ class LinkedMatrix(size: Int) {
 // this is a boolean graph, not a matrix
 class CompressedColumns(size: Int) {
 
-//  private val cols = Array.fill(size) {scala.collection.mutable.BitSet.empty}
-  private val cols = Array.fill(size) {scala.collection.mutable.TreeSet.empty[Int]}
-  //private val cols = Array.fill(size) {Set[Int]()}
+  // TODO: use Long keys and do away with the need to have a Ref=>Index lookup
+//  private val cols = Array.fill(size) {Set[Int]()}
+  private val cols = Array.fill(size) {new TIntHashSet()}
+
+//  private val bucket = Runtime.getRuntime.availableProcessors * 4
+//  private val locks = Array.fill(bucket){new ReentrantReadWriteLock()}
+//
+//  private def getLock(row: Int, col: Int) = locks(col % bucket)
 
   def get(row: Int, col: Int) = {
     require(row >= 0 && col >= 0)
     require(row < size && col < size)
-    cols(col)(row)
+//    val lock = getLock(row, col).readLock()
+//    lock.lock()
+//    try cols(col)(row)
+    val column = cols(col)
+    column synchronized {
+      column contains row
+    }
+//    finally lock.unlock()
   }
 
   def set(row: Int, col: Int) {
     require(row >= 0 && col >= 0)
     require(row < size && col < size)
-    cols(col) synchronized {
-      cols(col) = cols(col) + row
+//    val lock = getLock(row, col).writeLock()
+//    try cols(col) = cols(col) + row
+    val column = cols(col)
+    column synchronized {
+      column add row
     }
+    //    finally lock.unlock()
   }
 
 }

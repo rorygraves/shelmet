@@ -57,10 +57,10 @@ case class Clazz(name: ClassType, fields: List[Field]) {
 
 object SparseLinkStructure extends App with Logging {
 
-//    val reader = new HprofReader("intellij.hprof")
+    val reader = new HprofReader("intellij.hprof")
 //  val reader = new HprofReader("heap.bin")
 //  val reader = new HprofReader("sbt.hprof")
-  val reader = new HprofReader("visualvm.hprof")
+//  val reader = new HprofReader("visualvm.hprof")
 
   val watch = Stopwatch.createStarted()
   reader.readFile(new DumpVisitor {})
@@ -88,7 +88,7 @@ object SparseLinkStructure extends App with Logging {
   logger.info("LINKING pass took " + watch)
 
   logger.info(s"${linkingVisitor.forward.size } refs with ${linkingVisitor.count } links")
-  logger.info(linkingVisitor.missing.toSeq.sortWith { _._2 > _._2 }.mkString("\n"))
+//  logger.info(linkingVisitor.missing.toSeq.sortWith { _._2 > _._2 }.mkString("\n"))
 
 }
 
