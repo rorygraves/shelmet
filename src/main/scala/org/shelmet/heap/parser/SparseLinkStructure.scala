@@ -7,7 +7,6 @@ import org.shelmet.heap.HeapId
 import com.google.common.base.Stopwatch
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
-import java.util.concurrent.{Semaphore, Phaser}
 import java.util.concurrent.atomic.AtomicLong
 
 // value classes for Correctness of indexes
@@ -58,8 +57,10 @@ case class Clazz(name: ClassType, fields: List[Field]) {
 
 object SparseLinkStructure extends App with Logging {
 
-        val reader = new HprofReader("intellij.hprof")
+//    val reader = new HprofReader("intellij.hprof")
 //  val reader = new HprofReader("heap.bin")
+//  val reader = new HprofReader("sbt.hprof")
+  val reader = new HprofReader("visualvm.hprof")
 
   val watch = Stopwatch.createStarted()
   reader.readFile(new DumpVisitor {})
@@ -87,7 +88,7 @@ object SparseLinkStructure extends App with Logging {
   logger.info("LINKING pass took " + watch)
 
   logger.info(s"${linkingVisitor.forward.size } refs with ${linkingVisitor.count } links")
-  logger.info(linkingVisitor.missing.map { _.swap }.toVector.sortWith { _._1 > _._1 }.mkString("\n"))
+  logger.info(linkingVisitor.missing.toSeq.sortWith { _._2 > _._2 }.mkString("\n"))
 
 }
 
@@ -191,7 +192,8 @@ class LinkingVisitor(val forward: IndexedSeq[Ref],
                      val backward: Map[Ref, Index],
                      val classes: Map[ClassId, Clazz]) extends DumpVisitor with Logging {
 
-  private val links = new LinkedMatrix(forward.size)
+//  private val links = new LinkedMatrix(forward.size)
+  private val links = new CompressedColumns(forward.size)
 
   //  private var links = List[(Ref, Ref)]()
 
@@ -210,9 +212,11 @@ class LinkingVisitor(val forward: IndexedSeq[Ref],
   private def add(from: Ref, to: Ref)(fail: => String) {
     latch.getAndIncrement
 
+    // TODO: randomise work queue to reduce "Matrix.set" contention
     Future {
       try {
-        links.set(backward(from).id, backward(to).id, 1.0)
+        links.set(backward(from).id, backward(to).id)
+//        links.set(backward(from).id, backward(to).id, 1.0)
         //      links = (from, to) :: links
         //      links.put(from.id, to.id)
         //      links.addBinding(from, to)

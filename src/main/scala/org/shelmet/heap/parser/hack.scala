@@ -1,5 +1,10 @@
 package org.shelmet.heap.parser
 
+import java.util.concurrent.locks.ReentrantLock
+import scala.collection.immutable.ListSet
+import scala.collection.parallel.mutable
+import scala.collection
+
 
 //import no.uib.cipr.matrix.sparse.LinkedSparseMatrix
 //
@@ -44,13 +49,13 @@ class LinkedMatrix(size: Int) {
 
   rows(size - 1) = new Node(size - 1, 0, 0, null, null)
   cols(size - 1) = new Node(0, size - 1, 0, null, null)
-  (0 until size - 1).reverse foreach { i =>
-    rows(i) = new Node(i, 0, 0, rows(i + 1), rows(i + 1))
-    cols(i) = new Node(0, i, 0, cols(i + 1), cols(i + 1))
+  (0 until size - 1).reverse foreach {
+    i =>
+      rows(i) = new Node(i, 0, 0, rows(i + 1), rows(i + 1))
+      cols(i) = new Node(0, i, 0, cols(i + 1), cols(i + 1))
   }
   rows(0).colTail = cols(1)
   cols(size - 1).colTail = rows(1)
-//  cols(0) = null
 
   def get(row: Int, col: Int): Double = {
     require(row >= 0 && col >= 0)
@@ -68,45 +73,60 @@ class LinkedMatrix(size: Int) {
     }
   }
 
+  // to avoid synchronized
+  // TODO: use synchronized or reduce lock array size
+  private val colLocks = Array.fill(size){new ReentrantLock()}
+  private val rowLocks = Array.fill(size){new ReentrantLock()}
+
   def set(row: Int, col: Int, value: Double) {
     require(row >= 0 && col >= 0)
     require(row < size && col < size)
 
-    rows(row) synchronized {
-      cols(col) synchronized {
-        try {
-          if (col == 0) rows(row).value = value
-          else if (row == 0) cols(col).value = value
-          else findWithColNeighbours(row, col) match {
-            /*
-            Rules are that we should *always* have a left (up) neighbour on the same row (col) (because
-            zeroth rows/columns are treated separately)
-            but the right (down) neighbour might be null or on a different row (col). The left (up)
-            neighbour may be modified, but we must not mutate the right (down) neighbour.
-            */
-            case (up, Some(existing), down) if value == 0 =>
-              findWithRowNeighbours(row, col) match {
-                case (left, Some(_), right) =>
-                  up.colTail = down
-                  left.rowTail = right
-                case _ => throw new IllegalStateException
-              }
+    rowLocks(row).lock()
+    try {
+      colLocks(col).lock()
+      try {
+        if (col == 0) rows(row).value = value
+        else if (row == 0) cols(col).value = value
+        else findWithColNeighbours(row, col) match {
+          /*
+          We should *always* have a left (up) neighbour on the same row (col)
+          (because zeroth rows/columns are treated separately)
+          but the right (down) neighbour might be null or on a different row (col). The left (up)
+          neighbour may have its rowTail (colTail) modified, but we must not mutate the right (down).
 
-            case (up, Some(existing), down) => existing.value = value
-            case (up, None, down) if value == 0 =>
-
-            case (up, None, down) =>
-              findWithRowNeighbours(row, col) match {
-                case (left, None, right) =>
-                  val insert = new Node(row, col, value, right, down)
-                  up.colTail = insert
-                  left.rowTail = insert
-
-                case _ => throw new IllegalStateException
-              }
-          }
+          We are synchronized on the current row and column, but the previous node(s) still have
+          free dimensions (e.g. lock on (10,20) but previous row node might be (10, 15) which
+          can also be accessed by lock on (30,15)). This is OK because we're only updating
+          the row tail (in the case of a Node with a free column dimension) or the column tail
+          (in the case of a Node with a free row dimension).
+          */
+          case (up, Some(existing), down) if value == 0 => remove(row, col, up, down)
+          case (up, Some(existing), down) => existing.value = value
+          case (up, None, down) if value == 0 =>
+          case (up, None, down) => insert(row, col, up, down, value)
         }
-      }
+      } finally colLocks(col).unlock()
+    } finally rowLocks(row).unlock()
+  }
+
+  private def remove(row: Int, col: Int, up: Node, down: Node) {
+    findWithRowNeighbours(row, col) match {
+      case (left, Some(_), right) =>
+        up.colTail = down
+        left.rowTail = right
+      case _ => throw new IllegalStateException
+    }
+  }
+
+  private def insert(row: Int, col: Int, up: Node, down: Node, value: Double) {
+    findWithRowNeighbours(row, col) match {
+      case (left, None, right) =>
+        val insert = new Node(row, col, value, right, down)
+        up.colTail = insert
+        left.rowTail = insert
+
+      case _ => throw new IllegalStateException
     }
   }
 
@@ -144,6 +164,29 @@ class LinkedMatrix(size: Int) {
       latest = latest.colTail
     }
     latest
+  }
+
+}
+
+// this is a boolean graph, not a matrix
+class CompressedColumns(size: Int) {
+
+//  private val cols = Array.fill(size) {scala.collection.mutable.BitSet.empty}
+  private val cols = Array.fill(size) {scala.collection.mutable.TreeSet.empty[Int]}
+  //private val cols = Array.fill(size) {Set[Int]()}
+
+  def get(row: Int, col: Int) = {
+    require(row >= 0 && col >= 0)
+    require(row < size && col < size)
+    cols(col)(row)
+  }
+
+  def set(row: Int, col: Int) {
+    require(row >= 0 && col >= 0)
+    require(row < size && col < size)
+    cols(col) synchronized {
+      cols(col) = cols(col) + row
+    }
   }
 
 }
