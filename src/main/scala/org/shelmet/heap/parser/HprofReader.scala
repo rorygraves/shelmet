@@ -338,21 +338,29 @@ class HprofReader(fileName: String) extends Logging {
       case t : BaseFieldType => t
     }
 
-    val data = readPrimativeArray(reader,numElements,fieldType)
+    val data = readPrimitiveArray(reader,numElements,fieldType)
 
     dumpVisitor.primitiveArray(id,stackTraceSerialID,fieldType,data)
   }
 
-  def readPrimativeArray(reader : DataReader,numElements : Int,fieldType : FieldType): Seq[AnyVal] = {
-    for(i <- 0 until numElements)  yield fieldType match {
-      case BooleanFieldType => reader.readBoolean
-      case ByteFieldType => reader.readByte
-      case CharFieldType => reader.readChar
-      case ShortFieldType => reader.readShort
-      case IntFieldType => reader.readInt
-      case LongFieldType => reader.readLong
-      case FloatFieldType => reader.readFloat
-      case DoubleFieldType => reader.readDouble
+  def readPrimitiveArray(reader : DataReader,numElements : Int,fieldType : FieldType): ArrayWrapper = {
+    fieldType match {
+      case BooleanFieldType =>
+        ArrayWrapper.readBooleanArray(reader,numElements)
+      case ByteFieldType =>
+        ArrayWrapper.readByteArray(reader,numElements)
+      case CharFieldType =>
+        ArrayWrapper.readCharArray(reader,numElements)
+      case ShortFieldType =>
+        ArrayWrapper.readShortArray(reader,numElements)
+      case IntFieldType =>
+        ArrayWrapper.readIntArray(reader,numElements)
+      case LongFieldType =>
+        ArrayWrapper.readLongArray(reader,numElements)
+      case FloatFieldType =>
+        ArrayWrapper.readFloatArray(reader,numElements)
+      case DoubleFieldType =>
+        ArrayWrapper.readDoubleArray(reader,numElements)
       case _ =>
         throw new RuntimeException("unknown primitive type?")
     }

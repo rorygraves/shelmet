@@ -1,11 +1,14 @@
 package org.shelmet.heap.model.strings
 
-import org.shelmet.heap.parser.{ClassFieldEntry, ClassStaticEntry, HprofReader}
+import org.shelmet.heap.parser._
 import org.shelmet.heap.model.{JavaField, JavaClass}
 import java.io.File
 import org.shelmet.heap.model.create.AbstractDumpVisitor
 import org.shelmet.heap.HeapId
 import org.shelmet.heap.shared.{BaseFieldType, FieldType}
+import org.shelmet.heap.model.JavaField
+import scala.Some
+import org.shelmet.heap.HeapId
 
 //*********************************************************************************************************
 object Strings extends App {
@@ -71,10 +74,10 @@ object Strings extends App {
 class StringDataCollector(byteArrIds : Set[HeapId]) extends AbstractDumpVisitor(false) {
   var result : Map[HeapId,String] = Map.empty
   var counts : Map[String,Int] = Map.empty
-  override def primitiveArray(heapId : HeapId,stackTraceSerialID : Int,fieldType : BaseFieldType,data : Seq[AnyVal]) {
+  override def primitiveArray(heapId : HeapId,stackTraceSerialID : Int,fieldType : BaseFieldType,data : ArrayWrapper) {
     if(byteArrIds.contains(heapId)) {
       // intern strings to minimise strings process memory, as it is a one off process.
-      val str = new String(data.asInstanceOf[Seq[Char]].toArray).intern()
+      val str = data.asInstanceOf[CharArrayWrapper].toString.intern()
       result += (heapId -> str)
       counts += (str -> (counts.getOrElse(str,0) + 1))
     }

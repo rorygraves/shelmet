@@ -3,7 +3,7 @@ package org.shelmet.heap.model.create
 import org.shelmet.heap.model._
 import java.io.IOException
 import scala.Some
-import org.shelmet.heap.parser.{ClassFieldEntry, ClassStaticEntry}
+import org.shelmet.heap.parser.{ArrayWrapper, ClassFieldEntry, ClassStaticEntry}
 import org.shelmet.heap.HeapId
 import java.util.Date
 import org.shelmet.heap.shared.{BaseFieldType, ClassType}
@@ -104,7 +104,7 @@ class InitialPassDumpVisitor(snapshot : Snapshot,callStack: Boolean) extends Abs
     objectCount += 1
   }
 
-  override def primitiveArray(heapId : HeapId,stackTraceSerialID : Int,fieldType : BaseFieldType,data : Seq[AnyVal]) {
+  override def primitiveArray(heapId : HeapId,stackTraceSerialID : Int,fieldType : BaseFieldType,data : ArrayWrapper) {
     objectCount += 1
   }
 

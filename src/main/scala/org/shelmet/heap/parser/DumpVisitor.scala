@@ -40,5 +40,5 @@ trait DumpVisitor {
   def heapSummary(totalLiveBytes : Int,totalLiveInstances : Int,totalBytesAllocated : Long,totalInstancesAllocated : Long) {}
   def stackFrame(id : Long,methodNameId : Long,methodSigId : Long,sourceFileNameId : Long,classSerialId : Int,lineNo : Int) {}
   def stackTrace(serialNo : Int,threadSerialNo : Int,frameIDs : Vector[Long]) {}
-  def primitiveArray(heapId : HeapId,stackTraceSerialID : Int,fieldType : BaseFieldType,data : Seq[AnyVal]) {}
+  def primitiveArray(heapId : HeapId,stackTraceSerialID : Int,fieldType : BaseFieldType,data : ArrayWrapper) {}
   }
