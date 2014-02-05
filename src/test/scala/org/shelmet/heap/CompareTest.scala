@@ -32,7 +32,12 @@ class CompareTest extends FunSuite with Logging with BeforeAndAfterAll {
     logger.info("Initialising server")
 
     // 0 binds to a free ephemeral report
-    server = SHelmetServer(new Config(0,true,true,new File("heap.bin")))
+    server = SHelmetServer(
+      new Config(port = 0,
+        trackObjectAllocationStacks = true,
+        trackReferencesToObjects = true,
+        dumpFile = new File("heap.bin"),
+        calcRetained = true))
 
     server.start() match {
       case Some(actualPort) =>

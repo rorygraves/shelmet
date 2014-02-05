@@ -17,7 +17,8 @@ object SHelmetServer extends Logging {
     val dumpFile = config.dumpFile
     logger.info(s"Reading from $dumpFile...")
     val reader = new HprofReader(dumpFile.getAbsolutePath)
-    val model = Snapshot.readFromDump(reader,config.trackObjectAllocationStacks,config.trackReferencesToObjects)
+    val model = Snapshot.readFromDump(reader,config.trackObjectAllocationStacks,
+      config.trackReferencesToObjects,config.calcRetained)
     new SHelmetServer(config.port, model)
   }
 

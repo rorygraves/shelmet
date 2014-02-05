@@ -21,7 +21,8 @@ object Snapshot extends Logging {
   val SMALL_ID_MASK: Long = 0x0FFFFFFFFL
   private val DOT_LIMIT: Int = 5000
 
-  def readFromDump(hpr : HprofReader,callStack : Boolean,calculateRefs : Boolean) : Snapshot = {
+  def readFromDump(hpr : HprofReader,callStack : Boolean,calculateRefs : Boolean,
+                   calculateRetained : Boolean) : Snapshot = {
     val snapshot = new Snapshot()
     Snapshot.setInstance(snapshot)
     logger.info("Resolving structure")
@@ -38,8 +39,11 @@ object Snapshot extends Logging {
     logger.info("Calculating tree depths.")
     snapshot.calculateDepths()
 
-    logger.info("Calculating retained sizes. (may take a while)")
-    snapshot.calculateRetainedSizes()
+    if(calculateRetained) {
+      logger.info("Calculating retained sizes. (may take a while)")
+      snapshot.calculateRetainedSizes()
+    } else
+      logger.info("Calculation of retained sized skipped")
     logger.info("Snapshot load complete.")
     Snapshot.clearInstance()
     calcAverageStoredSize(snapshot.allObjects)

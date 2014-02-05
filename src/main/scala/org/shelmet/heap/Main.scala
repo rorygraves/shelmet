@@ -26,6 +26,8 @@ object Main extends Logging {
            |        example, -J-mx512m to use a maximum heap size of 512MB")""".stripMargin)
     opt[Int]('p', "port") action { (x, c) =>
       c.copy(port = x) } text s"Set the port for the HTTP server.  Defaults to ${Config.DEFAULT_HTTP_PORT}"
+    opt[Unit]("retained") action { (_, c) =>
+    c.copy(calcRetained=true) } text "Enable retained size calculation (slow and probably suspect right now."
     opt[Unit]("noStack") action { (_, c) =>
       c.copy(trackObjectAllocationStacks = false) } text "Turn off tracking object allocation call stack."
     opt[Unit]("noRefs") action { (_, c) =>

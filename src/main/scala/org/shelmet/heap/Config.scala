@@ -9,6 +9,5 @@ object Config {
 case class Config(port : Int = Config.DEFAULT_HTTP_PORT,
                   trackObjectAllocationStacks : Boolean = true,
                   trackReferencesToObjects : Boolean = true,
-                  dumpFile : File = new File(".") ) {
-
-}
+                  dumpFile : File = new File("."),
+                  calcRetained : Boolean = false )
