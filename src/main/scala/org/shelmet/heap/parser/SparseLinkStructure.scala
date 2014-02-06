@@ -2,12 +2,12 @@ package org.shelmet.heap.parser
 
 import com.typesafe.scalalogging.slf4j.Logging
 import scala.collection.mutable
-import org.shelmet.heap.shared.{FieldType, BaseFieldType, ClassType}
+import org.shelmet.heap.shared.{FieldType, ClassType}
 import org.shelmet.heap.HeapId
 import com.google.common.base.Stopwatch
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
-import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.LinkedBlockingQueue
 
 // value classes for Correctness of indexes
 // TODO: move to DumpVisitor
@@ -57,38 +57,33 @@ case class Clazz(name: ClassType, fields: List[Field]) {
 
 object SparseLinkStructure extends App with Logging {
 
-    val reader = new HprofReader("intellij.hprof")
-//  val reader = new HprofReader("heap.bin")
-//  val reader = new HprofReader("sbt.hprof")
-//  val reader = new HprofReader("visualvm.hprof")
+  val reader = new HprofReader("intellij.hprof")
+  //  val reader = new HprofReader("heap.bin")
+  //  val reader = new HprofReader("sbt.hprof")
+  //  val reader = new HprofReader("visualvm.hprof")
 
   val watch = Stopwatch.createStarted()
-  reader.readFile(new DumpVisitor {})
-  logger.info("NULL pass took " + watch)
+  //  reader.readFile(new DumpVisitor {})
+  //  logger.info("NULL pass took " + watch)
+  //
+  //  watch.reset()
+  //  watch.start()
 
-  watch.reset()
-  watch.start()
   // first pass is just to create a unique ID for each entry
   val countingVisitor = new CountingVisitor
   reader.readFile(countingVisitor)
-  val lookups = countingVisitor.lookups
   logger.info("COUNTING pass took " + watch)
 
   watch.reset()
   watch.start()
-  val linkingVisitor = LinkingVisitor(lookups)
+  val linkingVisitor = new LinkingVisitor(countingVisitor.lookup)
   reader.readFile(linkingVisitor)
 
-  // something quick so I can go to bed...
-  while (linkingVisitor.latch.get() != 0) {
-    logger.info(linkingVisitor.latch.get() + " still outstanding")
-    Thread.sleep(1000)
-  }
 
+  val links = linkingVisitor.links
   logger.info("LINKING pass took " + watch)
 
-  logger.info(s"${linkingVisitor.forward.size } refs with ${linkingVisitor.count } links")
-//  logger.info(linkingVisitor.missing.toSeq.sortWith { _._2 > _._2 }.mkString("\n"))
+  logger.info(s"${links.columns } refs with ${links.count } links")
 
 }
 
@@ -98,49 +93,15 @@ case class Lookups(forward: IndexedSeq[Ref],
 
 
 class CountingVisitor extends DumpVisitor with Logging {
-  // experiment with immutable vars
   private val classNames = mutable.HashMap[ClassId, NameId]()
   private val names = mutable.HashMap[NameId, String]() withDefault ("unknown@" + _)
-  private val refs = mutable.HashSet[Ref]()
   private val classes = mutable.HashMap[ClassId, LazyClazz]()
 
-  def lookups = {
-    val forward = refs.toIndexedSeq
-    Lookups(
-      forward,
-      forward.zipWithIndex.toMap.mapValues { Index(_) },
-      classes.mapValues { _.toClazz(classes) }.toMap
-    )
-  }
+  def lookup = classes.mapValues(_.toClazz(classes)).toMap
 
   final override def utf8String(id: Long, string: String) {
     names += (NameId(id) -> string)
   }
-
-  private def index(id: Ref) {
-    if (!id.isNull && !refs(id))
-      refs(id) = true
-  }
-
-
-  // do we need to do anything with the roots?
-  //  override def gcRootUnknown(id : Long) = index(Ref(id))
-  //  override def gcRootThreadObj(id : Long,threadSeq : Int,stackSeq :Int) = index(Ref(id))
-  //  override def gcRootJNIGlobal(id : Long,jniGlobalRefId : Long) = index(Ref(id))
-  //  override def gcRootJNILocal(heapRef : HeapId,threadSeq : Int,depth : Int) = index(Ref(heapRef))
-  //  override def gcRootJavaFrame(heapRef : HeapId,threadSeq : Int,depth : Int) = index(Ref(heapRef))
-  //  override def gcRootNativeStack(id: HeapId,threadSeq : Int) = index(Ref(id))
-  //  override def gcRootStickyClass(id : Long) = index(Ref(id))
-  //  override def gcRootThreadBlock(id : Long,threadSeq : Int) = index(Ref(id))
-  //  override def gcRootMonitorUsed(id : Long) = index(Ref(id))
-
-
-  override def instanceDump(id: HeapId, stackTraceSerialId: Int, classId: HeapId, fields: Option[Vector[Any]], fieldsLengthBytes: Int) = index(Ref(id))
-
-  override def objectArrayDump(id: HeapId, stackTraceSerialId: Int, numElements: Int, classId: HeapId, elementIDs: Seq[HeapId]) = index(Ref(id))
-
-  override def primitiveArray(heapId: HeapId, stackTraceSerialID: Int, fieldType: BaseFieldType, data: Seq[AnyVal]) = index(Ref(heapId))
-
 
   // presumably all the loadClass calls happen at the start
   override def loadClass(classSerialNo: Int, classID: HeapId, stackTraceSerialNo: Int, classNameID: Long) {
@@ -174,62 +135,34 @@ class CountingVisitor extends DumpVisitor with Logging {
       val fieldName = names(NameId(fi.nameId))
       Field(fieldName, fi.itemType)
     }
-    staticItems foreach {
-      _.value match {
-        case h: HeapId => index(Ref(h))
-        case _ => // primitive
-      }
-    }
-
-    // what are these for?
-    constPoolEntries foreach { s => println(s._2.getClass) }
-
     classes += ClassId(id) -> LazyClazz(classType, ClassId(superClassId), fields)
   }
 }
 
-class LinkingVisitor(val forward: IndexedSeq[Ref],
-                     val backward: Map[Ref, Index],
-                     val classes: Map[ClassId, Clazz]) extends DumpVisitor with Logging {
+class LinkingVisitor(classes: Map[ClassId, Clazz]) extends DumpVisitor with Logging {
 
-//  private val links = new LinkedMatrix(forward.size)
-  private val links = new CompressedColumns(forward.size)
+  val links = new CompressedColumns
 
-  //  private var links = List[(Ref, Ref)]()
+  // horrible hack to block the data source
+  private val queue = new LinkedBlockingQueue[Any](Runtime.getRuntime.availableProcessors() * 2)
+  override def heapDumpEnd() {
+    while (queue.peek() != null) {
+      Thread.sleep(1000)
+    }
+  }
 
-  //  private val links = new TLongObjectHashMap[Set[Ref]]()
-
-  //  private val links = new mutable.HashMap[Ref, mutable.Set[Ref]] with mutable.MultiMap[Ref, Ref]
-
-  var missing = Map[String, Int]() withDefault (f => 0)
-
-  var count = 0
-
-  var latch = new AtomicLong(0)
-
-  //  def count = links.size
-
-  private def add(from: Ref, to: Ref)(fail: => String) {
-    latch.getAndIncrement
-
-    // TODO: randomise work queue to reduce "Matrix.set" contention
+  // TODO: randomise work queue to reduce "Matrix.set" contention
+  private def add(from: Ref, to: Ref) {
+    queue.put(links) // any object works
     Future {
       try {
-        links.set(backward(from).id, backward(to).id)
-//        links.set(backward(from).id, backward(to).id, 1.0)
-        //      links = (from, to) :: links
-        //      links.put(from.id, to.id)
-        //      links.addBinding(from, to)
-        count += 1
-        if (count % 100000 == 0)
-          logger.info(count + " links")
-
-      } catch {
-        case _: NoSuchElementException =>
-          val failed = fail
-          missing += (failed -> (missing(failed) + 1))
+        links.set(from.id, to.id)
+        val tally = links.count
+        if (tally % 1000000 == 0)
+          logger.info(tally + " links")
+      } finally {
+        queue.poll()
       }
-      finally latch.decrementAndGet()
     }
   }
 
@@ -245,15 +178,11 @@ class LinkingVisitor(val forward: IndexedSeq[Ref],
         (0 until fields.size) foreach { i =>
           fields(i) match {
             case HeapId(to) if !Ref(to).isNull =>
-              add(Ref(heapId), Ref(to))(clazz.fullFieldName(i))
+              add(Ref(heapId), Ref(to))
             case _ => // primitive
           }
         }
     }
-  }
-
-  override def primitiveArray(heapId: HeapId, stackTraceSerialID: Int, fieldType: BaseFieldType, data: Seq[AnyVal]) {
-    // TODO
   }
 
   override def objectArrayDump(heapId: HeapId, stackTraceSerialId: Int, numElements: Int, classId: HeapId, values: Seq[HeapId]) {
@@ -262,13 +191,9 @@ class LinkingVisitor(val forward: IndexedSeq[Ref],
     (0 until values.size) foreach { i =>
       val to = values(i)
       if (!to.isNull)
-        add(Ref(heapId), Ref(to))(classes(ClassId(classId)).name.toString)
+        add(Ref(heapId), Ref(to))
     }
   }
 
-}
 
-object LinkingVisitor {
-  def apply(lookups: Lookups): LinkingVisitor =
-    new LinkingVisitor(lookups.forward, lookups.backward, lookups.classes)
 }

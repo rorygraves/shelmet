@@ -1,38 +1,20 @@
 package org.shelmet.heap.parser
 
-import java.util.concurrent.locks.{ReentrantReadWriteLock, ReentrantLock}
-import scala.collection.immutable.ListSet
-import scala.collection.parallel.mutable
-import scala.collection
-import gnu.trove.impl.hash.TLongIntHash
-import gnu.trove.set.hash.TIntHashSet
-
-
-//import no.uib.cipr.matrix.sparse.LinkedSparseMatrix
-//
-//// https://github.com/fommil/matrix-toolkits-java/issues/43
-//object LinkedMatrix {
-//  def apply(size: Int): LinkedSparseMatrix = {
-//    val matrix = new LinkedSparseMatrix(size, size)
-//    // this should significantly speed up future lookups
-//    (0 until size) foreach { i =>
-//      matrix.set(i, i, 1.0)
-//    }
-//    matrix
-//  }
-//}
-//
+import gnu.trove.set.hash.TLongHashSet
+import gnu.trove.map.hash.TLongObjectHashMap
+import java.util.concurrent.atomic.AtomicLong
 
 object `package` {
 
-  class PimpedEffects[T](val a: T) extends AnyVal {
+  implicit class PimpedEffects[T <: AnyRef](val a: T) {
     def withEffect(effect: T => Unit): T = {
       effect(a)
       a
     }
+
+    def synced[R](f: T => R): R = a synchronized { f(a) }
   }
 
-  implicit def pimpedEffect[T](a: T) = new PimpedEffects(a)
 }
 
 // mutable, but allows concurrent set
@@ -75,19 +57,12 @@ class LinkedMatrix(size: Int) {
     }
   }
 
-  // to avoid synchronized
-  // TODO: use synchronized or reduce lock array size
-  private val colLocks = Array.fill(size){new ReentrantLock()}
-  private val rowLocks = Array.fill(size){new ReentrantLock()}
-
   def set(row: Int, col: Int, value: Double) {
     require(row >= 0 && col >= 0)
     require(row < size && col < size)
 
-    rowLocks(row).lock()
-    try {
-      colLocks(col).lock()
-      try {
+    rows(row) synchronized {
+      cols(col) synchronized {
         if (col == 0) rows(row).value = value
         else if (row == 0) cols(col).value = value
         else findWithColNeighbours(row, col) match {
@@ -108,8 +83,8 @@ class LinkedMatrix(size: Int) {
           case (up, None, down) if value == 0 =>
           case (up, None, down) => insert(row, col, up, down, value)
         }
-      } finally colLocks(col).unlock()
-    } finally rowLocks(row).unlock()
+      }
+    }
   }
 
   private def remove(row: Int, col: Int, up: Node, down: Node) {
@@ -171,40 +146,45 @@ class LinkedMatrix(size: Int) {
 }
 
 // this is a boolean graph, not a matrix
-class CompressedColumns(size: Int) {
+class CompressedColumns {
+  self =>
 
-  // TODO: use Long keys and do away with the need to have a Ref=>Index lookup
-//  private val cols = Array.fill(size) {Set[Int]()}
-  private val cols = Array.fill(size) {new TIntHashSet()}
+  private val cols = new TLongObjectHashMap[TLongHashSet]
+  private val enters = new AtomicLong
 
-//  private val bucket = Runtime.getRuntime.availableProcessors * 4
-//  private val locks = Array.fill(bucket){new ReentrantReadWriteLock()}
-//
-//  private def getLock(row: Int, col: Int) = locks(col % bucket)
+  def columns = cols.size()
+  def count = enters.get
 
-  def get(row: Int, col: Int) = {
-    require(row >= 0 && col >= 0)
-    require(row < size && col < size)
-//    val lock = getLock(row, col).readLock()
-//    lock.lock()
-//    try cols(col)(row)
-    val column = cols(col)
-    column synchronized {
-      column contains row
-    }
-//    finally lock.unlock()
+  def get(col: Long) = withColumn(col) {
+    _ toArray
   }
 
-  def set(row: Int, col: Int) {
-    require(row >= 0 && col >= 0)
-    require(row < size && col < size)
-//    val lock = getLock(row, col).writeLock()
-//    try cols(col) = cols(col) + row
-    val column = cols(col)
-    column synchronized {
-      column add row
-    }
-    //    finally lock.unlock()
+  def get(row: Long, col: Long) = withColumn(col) {
+    _ contains row
   }
 
+  private def withColumn[R](col: Long)(f: TLongHashSet => R): R = {
+    // there is no ConcurrentTLongHashMap :-(
+    // and TLongHash does not support double-checked locking
+    //    val column = cols.putIfAbsent(col, new TLongHashSet)
+    val column = self synchronized {
+      cols.get(col) match {
+        case null => new TLongHashSet withEffect {
+          cols.put(col, _)
+        }
+        case existing => existing
+      }
+    }
+    column synced { f }
+  }
+
+  def set(row: Long, col: Long) {
+    withColumn(col) {
+      _ add row
+    }
+    enters.getAndIncrement()
+  }
+
+  // TODO: potential optimisation
+  //  def set(row: Long, col: Seq[Long])
 }

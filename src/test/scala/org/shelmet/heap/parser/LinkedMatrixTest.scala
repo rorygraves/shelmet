@@ -41,20 +41,20 @@ class LinkedMatrixTest extends FunSuite with Logging {
 class CompressedColumnsTest extends FunSuite with Logging {
 
   test("set and get") {
-    val matrix = new CompressedColumns(1000)
+    val matrix = new CompressedColumns
     (1 to 10000) foreach { i =>
-      val row = nextInt(1000)
-      val col = nextInt(1000)
+      val row = nextInt(1000).toLong
+      val col = nextInt(1000).toLong
       matrix.set(row, col)
       assert(matrix.get(row, col), (row, col))
     }
   }
 
   test("parallel set with serial get") {
-    val matrix = new CompressedColumns(100)
+    val matrix = new CompressedColumns
     val indices = {
       (1 to 10000) map { i =>
-        (nextInt(100), nextInt(100))
+        (nextInt(100).toLong, nextInt(100).toLong)
       }
     }.toSet
     indices.par foreach { case (row, col) =>
@@ -63,6 +63,12 @@ class CompressedColumnsTest extends FunSuite with Logging {
     indices foreach { case (row, col) =>
       assert(matrix.get(row, col), (row, col))
     }
-    // TODO: the unset entries
+    for {
+      i <- 0 until 100
+      j <- 0 until 100
+      if !indices.contains(i, j)
+    } {
+      assert(!matrix.get(i, j), (i, j))
+    }
   }
 }
