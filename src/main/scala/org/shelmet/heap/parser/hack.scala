@@ -147,11 +147,12 @@ class LinkedMatrix(size: Int) {
 class CompressedColumns {
   self =>
 
-  import debox.map.{Map => PMap}
-  import debox.set.{Set => PSet}
+  import debox.map.Map.{empty => pMap}
+  import debox.set.Set.{empty => pSet}
 
-//  private val cols = new TLongObjectHashMap[TLongHashSet]
-  private val cols = PMap.empty[Long, debox.set.Set[Long]]
+  type LSet = debox.set.Set[Long]
+
+  private val cols = pMap[Long, LSet]
   private val enters = new AtomicLong
 
   def columns = cols.length
@@ -165,12 +166,12 @@ class CompressedColumns {
     _(row)
   }
 
-  private def withColumn[R](col: Long)(f: PSet[Long] => R): R = {
+  private def withColumn[R](col: Long)(f: LSet => R): R = {
     // double-checked locking is actually slower (we miss so much) :-(
     val column = self synchronized {
       cols.get(col) match {
         case Some(hit) => hit
-        case None => PSet.empty[Long] withEffect {
+        case None => pSet[Long] withEffect {
           cols(col) = _
         }
       }
