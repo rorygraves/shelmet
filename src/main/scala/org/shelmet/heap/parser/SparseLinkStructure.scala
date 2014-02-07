@@ -163,6 +163,8 @@ class LinkingVisitor(classes: Map[ClassId, Clazz]) extends DumpVisitor with Logg
       } finally {
         queue.poll()
       }
+    } onFailure {
+      case t: Throwable => logger.error("", t)
     }
   }
 

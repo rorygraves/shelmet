@@ -1,7 +1,5 @@
 package org.shelmet.heap.parser
 
-import gnu.trove.set.hash.TLongHashSet
-import gnu.trove.map.hash.TLongObjectHashMap
 import java.util.concurrent.atomic.AtomicLong
 
 object `package` {
@@ -149,30 +147,30 @@ class LinkedMatrix(size: Int) {
 class CompressedColumns {
   self =>
 
-  private val cols = new TLongObjectHashMap[TLongHashSet]
+  import debox.map.{Map => PMap}
+  import debox.set.{Set => PSet}
+
+//  private val cols = new TLongObjectHashMap[TLongHashSet]
+  private val cols = PMap.empty[Long, debox.set.Set[Long]]
   private val enters = new AtomicLong
 
-  def columns = cols.size()
+  def columns = cols.length
   def count = enters.get
 
   def get(col: Long) = withColumn(col) {
-    _ toArray
+    _.copy
   }
 
   def get(row: Long, col: Long) = withColumn(col) {
-    _ contains row
+    _(row)
   }
 
-  private def withColumn[R](col: Long)(f: TLongHashSet => R): R = {
-    // there is no ConcurrentTLongHashMap :-(
-    // and TLongHash does not support double-checked locking
-    //    val column = cols.putIfAbsent(col, new TLongHashSet)
+  private def withColumn[R](col: Long)(f: PSet[Long] => R): R = {
+    // PMap does not support double-checked locking :-(
     val column = self synchronized {
-      cols.get(col) match {
-        case null => new TLongHashSet withEffect {
-          cols.put(col, _)
-        }
-        case existing => existing
+      if (cols.contains(col)) cols(col)
+      else PSet.empty[Long] withEffect {
+        cols(col) = _
       }
     }
     column synced { f }
@@ -180,7 +178,7 @@ class CompressedColumns {
 
   def set(row: Long, col: Long) {
     withColumn(col) {
-      _ add row
+      _(row) = true
     }
     enters.getAndIncrement()
   }
