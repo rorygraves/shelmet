@@ -1,7 +1,3 @@
-import AssemblyKeys._ // put this at the top of the file
-
-assemblySettings
-
 name := "shelmet"
 
 version := "1.0"
@@ -12,7 +8,6 @@ scalaVersion := "2.10.3"
 
 resolvers ++= Seq(
   Resolver.mavenLocal,
-  Resolver.sonatypeRepo("releases"),
   Resolver.sonatypeRepo("snapshots"),
   Resolver.typesafeRepo("releases"),
   "spray repo" at "http://repo.spray.io"
@@ -24,12 +19,13 @@ libraryDependencies ++= List(
   "org.scalatest" %% "scalatest" % "2.0" % "test",
   "xmlunit" % "xmlunit" % "1.5" % "test",
   "com.typesafe" %% "scalalogging-slf4j" % "1.0.1",
-  "io.spray" % "spray-can" % "1.2.0",
-  "io.spray" % "spray-routing" % "1.2.0",
+  "io.spray" % "spray-can" % "1.2.0" exclude("org.scala-lang", "scala-library"),
+  "io.spray" % "spray-routing" % "1.2.0" exclude("org.scala-lang", "scala-library"),
   "com.googlecode.matrix-toolkits-java" % "mtj" % "1.0.2-SNAPSHOT" intransitive(),
   "com.github.fommil" %% "debox" % "0.1.1-SNAPSHOT",
+  "com.netflix.rxjava" % "rxjava-scala" % "0.16.1",
   "com.google.guava" % "guava" % "16.0",
-  "net.sf.trove4j" % "trove4j" % "3.0.3",
+//  "net.sf.trove4j" % "trove4j" % "3.0.3",
   "com.typesafe.akka" %% "akka-actor" % "2.2.3",
   "com.typesafe.akka" % "akka-slf4j_2.10" % "2.2.3",
   "com.typesafe.akka" %% "akka-testkit" % "2.2.3" % "test",
