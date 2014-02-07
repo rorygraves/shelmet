@@ -166,11 +166,13 @@ class CompressedColumns {
   }
 
   private def withColumn[R](col: Long)(f: PSet[Long] => R): R = {
-    // PMap does not support double-checked locking :-(
+    // double-checked locking is actually slower (we miss so much) :-(
     val column = self synchronized {
-      if (cols.contains(col)) cols(col)
-      else PSet.empty[Long] withEffect {
-        cols(col) = _
+      cols.get(col) match {
+        case Some(hit) => hit
+        case None => PSet.empty[Long] withEffect {
+          cols(col) = _
+        }
       }
     }
     column synced { f }
@@ -182,7 +184,4 @@ class CompressedColumns {
     }
     enters.getAndIncrement()
   }
-
-  // TODO: potential optimisation
-  //  def set(row: Long, col: Seq[Long])
 }
