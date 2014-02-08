@@ -43,8 +43,8 @@ class CompressedColumnsTest extends FunSuite with Logging {
   test("set and get") {
     val matrix = new CompressedColumns(0)
     (1 to 10000) foreach { i =>
-      val row = nextInt(1000).toLong
-      val col = nextInt(1000).toLong
+      val row = nextInt(1000)
+      val col = nextInt(1000)
       matrix.set(row, col)
       assert(matrix.get(row, col), (row, col))
     }
@@ -54,7 +54,7 @@ class CompressedColumnsTest extends FunSuite with Logging {
     val matrix = new CompressedColumns(0)
     val indices = {
       (1 to 10000) map { i =>
-        (nextInt(100).toLong, nextInt(100).toLong)
+        (nextInt(100), nextInt(100))
       }
     }.toSet
     indices.par foreach { case (row, col) =>

@@ -1,6 +1,7 @@
 package org.shelmet.heap.parser
 
 import java.util.concurrent.atomic.AtomicLong
+import com.typesafe.scalalogging.slf4j.Logging
 
 object `package` {
 
@@ -147,23 +148,23 @@ class LinkedMatrix(size: Int) {
 
 
 // this is a boolean graph, not a matrix
-class CompressedColumns(expected: Int) {
+class CompressedColumns(size: Int) extends Logging {
   self =>
 
-  import debox.map.Map.{ofDim => pMap}
+//  import debox.map.Map.{ofDim => pMap}
 
   // gives 186mb LList (plus 25mb arrays) with 50mb long[] on 2,492,432 refs with 5,819,345 links
-  trait LList {
-    def head: Long
+  trait IList {
+    def head: Int
 
-    def tail: LList = ???
+    def tail: IList = ???
 
-    def ::(e: Long): LList = new LLink(e, this)
+    def ::(e: Int): IList = new ILink(e, this)
 
     def isEmpty: Boolean
 
-    def toSet: debox.set.Set[Long] =
-      debox.set.Set[Long] withEffect {
+    def toSet: debox.set.Set[Int] =
+      debox.set.Set[Int] withEffect {
         collection =>
           var probe = this
           while (!probe.isEmpty) {
@@ -173,36 +174,42 @@ class CompressedColumns(expected: Int) {
       }
   }
 
-  object LNil extends LList {
+  object INil extends IList {
     def head = ???
 
     def isEmpty = true
   }
 
-  class LLink(override val head: Long,
-              override val tail: LList) extends LList {
+  class ILink(override val head: Int,
+              override val tail: IList) extends IList {
     def isEmpty = false
   }
 
 
-  private val cols = pMap[Long, LList](expected)
+//  private val cols = pMap[Int, IList](expected)
+  private val cols = debox.buffer.Mutable.ofDim[IList](size)
   private val enters = new AtomicLong
 
   def columns = cols.length
 
   def count = enters.get
 
-  def get(col: Long) = cols(col).toSet
+  def get(col: Int) = cols(col).toSet
 
-  def get(row: Long, col: Long): Boolean = get(col)(row)
+  def get(row: Int, col: Int): Boolean = get(col)(row)
 
-  def set(row: Long, col: Long) {
+  def set(row: Int, col: Int) {
     self synchronized {
-      val column = cols.get(col) match {
-        case Some(hit) => hit
-        case None => LNil
+      if (cols.length <= col) {
+        // FIXME: assert against this
+        logger.warn("unexpected column: " + col)
+      } else {
+        val existing = cols.get(col) match {
+          case None => INil
+          case Some(existing) => existing
+        }
+        cols.update(col, row :: existing)
       }
-      cols(col) = row :: column
     }
     enters.getAndIncrement()
   }
