@@ -41,7 +41,7 @@ class LinkedMatrixTest extends FunSuite with Logging {
 class CompressedColumnsTest extends FunSuite with Logging {
 
   test("set and get") {
-    val matrix = new CompressedColumns
+    val matrix = new CompressedColumns(0)
     (1 to 10000) foreach { i =>
       val row = nextInt(1000).toLong
       val col = nextInt(1000).toLong
@@ -51,7 +51,7 @@ class CompressedColumnsTest extends FunSuite with Logging {
   }
 
   test("parallel set with serial get") {
-    val matrix = new CompressedColumns
+    val matrix = new CompressedColumns(0)
     val indices = {
       (1 to 10000) map { i =>
         (nextInt(100).toLong, nextInt(100).toLong)

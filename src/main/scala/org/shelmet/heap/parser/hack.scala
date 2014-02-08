@@ -10,7 +10,9 @@ object `package` {
       a
     }
 
-    def synced[R](f: T => R): R = a synchronized { f(a) }
+    def synced[R](f: T => R): R = a synchronized {
+      f(a)
+    }
   }
 
 }
@@ -143,45 +145,64 @@ class LinkedMatrix(size: Int) {
 
 }
 
+
 // this is a boolean graph, not a matrix
-class CompressedColumns {
+class CompressedColumns(expected: Int) {
   self =>
 
-  import debox.map.Map.{empty => pMap}
-  import debox.set.Set.{empty => pSet}
+  import debox.map.Map.{ofDim => pMap}
 
-  type LSet = debox.set.Set[Long]
+  // gives 186mb LList (plus 25mb arrays) with 50mb long[] on 2,492,432 refs with 5,819,345 links
+  trait LList {
+    def head: Long
 
-  private val cols = pMap[Long, LSet]
+    def tail: LList = ???
+
+    def ::(e: Long): LList = new LLink(e, this)
+
+    def isEmpty: Boolean
+
+    def toSet: debox.set.Set[Long] =
+      debox.set.Set[Long] withEffect {
+        collection =>
+          var probe = this
+          while (!probe.isEmpty) {
+            collection add probe.head
+            probe = probe.tail
+          }
+      }
+  }
+
+  object LNil extends LList {
+    def head = ???
+
+    def isEmpty = true
+  }
+
+  class LLink(override val head: Long,
+              override val tail: LList) extends LList {
+    def isEmpty = false
+  }
+
+
+  private val cols = pMap[Long, LList](expected)
   private val enters = new AtomicLong
 
   def columns = cols.length
+
   def count = enters.get
 
-  def get(col: Long) = withColumn(col) {
-    _.copy
-  }
+  def get(col: Long) = cols(col).toSet
 
-  def get(row: Long, col: Long) = withColumn(col) {
-    _(row)
-  }
-
-  private def withColumn[R](col: Long)(f: LSet => R): R = {
-    // double-checked locking is actually slower (we miss so much) :-(
-    val column = self synchronized {
-      cols.get(col) match {
-        case Some(hit) => hit
-        case None => pSet[Long] withEffect {
-          cols(col) = _
-        }
-      }
-    }
-    column synced { f }
-  }
+  def get(row: Long, col: Long): Boolean = get(col)(row)
 
   def set(row: Long, col: Long) {
-    withColumn(col) {
-      _(row) = true
+    self synchronized {
+      val column = cols.get(col) match {
+        case Some(hit) => hit
+        case None => LNil
+      }
+      cols(col) = row :: column
     }
     enters.getAndIncrement()
   }

@@ -32,4 +32,6 @@ libraryDependencies ++= List(
   "org.specs2" %% "specs2" % "2.2.3" % "test"
 )
 
+ideaExcludeFolders ++= Seq(".idea", ".idea_modules")
+
 net.virtualvoid.sbt.graph.Plugin.graphSettings

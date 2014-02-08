@@ -8,6 +8,7 @@ import com.google.common.base.Stopwatch
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
 import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.atomic.{AtomicInteger, AtomicLong}
 
 // value classes for Correctness of indexes
 // TODO: move to DumpVisitor
@@ -76,12 +77,20 @@ object SparseLinkStructure extends App with Logging {
 
   watch.reset()
   watch.start()
-  val linkingVisitor = new LinkingVisitor(countingVisitor.lookup)
+  val linkingVisitor = new LinkingVisitor(countingVisitor.lookup, countingVisitor.count)
   reader.readFile(linkingVisitor)
-
 
   val links = linkingVisitor.links
   logger.info("LINKING pass took " + watch)
+
+  logger.info(s"${links.columns } refs with ${links.count } links")
+
+  System.gc()
+  System.gc()
+  System.gc()
+  System.gc()
+  System.gc()
+  Thread.sleep(30000)
 
   logger.info(s"${links.columns } refs with ${links.count } links")
 
@@ -99,7 +108,14 @@ class CountingVisitor extends DumpVisitor with Logging {
 
   def lookup = classes.mapValues(_.toClazz(classes)).toMap
 
-  final override def utf8String(id: Long, string: String) {
+  private val tally = new AtomicInteger
+  def count = tally.get
+
+  override def instanceDump(a: HeapId, b: Int, c: HeapId, d: Option[Vector[Any]], e: Int) {
+    tally.getAndIncrement
+  }
+
+  override def utf8String(id: Long, string: String) {
     names += (NameId(id) -> string)
   }
 
@@ -118,7 +134,6 @@ class CountingVisitor extends DumpVisitor with Logging {
 
     def toClazz(lookup: collection.Map[ClassId, LazyClazz]) = Clazz(name, allFields(lookup))
   }
-
 
   override def classDump(id: HeapId, stackTraceSerialId: Int,
                          superClassId: HeapId,
@@ -139,9 +154,9 @@ class CountingVisitor extends DumpVisitor with Logging {
   }
 }
 
-class LinkingVisitor(classes: Map[ClassId, Clazz]) extends DumpVisitor with Logging {
+class LinkingVisitor(classes: Map[ClassId, Clazz], count: Int = 0) extends DumpVisitor with Logging {
 
-  val links = new CompressedColumns
+  val links = new CompressedColumns(count)
 
   // horrible hack to block the data source
   private val queue = new LinkedBlockingQueue[Any](Runtime.getRuntime.availableProcessors() * 2)
