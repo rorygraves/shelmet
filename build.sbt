@@ -1,6 +1,6 @@
 name := "shelmet"
 
-version := "1.0"
+version := "1.0-SNAPSHOT"
 
 scalaVersion := "2.10.3"
 
@@ -23,8 +23,10 @@ libraryDependencies ++= List(
   "io.spray" % "spray-routing" % "1.2.0" exclude("org.scala-lang", "scala-library"),
   "com.googlecode.matrix-toolkits-java" % "mtj" % "1.0.2-SNAPSHOT" intransitive(),
   "com.github.fommil" %% "debox" % "0.1.1-SNAPSHOT",
-  "com.netflix.rxjava" % "rxjava-scala" % "0.16.1",
+  "com.netflix.rxjava" % "rxjava-scala" % "0.16.1" intransitive(),
+  "com.netflix.rxjava" % "rxjava-core" % "0.16.1" intransitive(),
   "com.google.guava" % "guava" % "16.0",
+  "org.mapdb" % "mapdb" % "0.9.9",
 //  "net.sf.trove4j" % "trove4j" % "3.0.3",
   "com.typesafe.akka" %% "akka-actor" % "2.2.3",
   "com.typesafe.akka" % "akka-slf4j_2.10" % "2.2.3",

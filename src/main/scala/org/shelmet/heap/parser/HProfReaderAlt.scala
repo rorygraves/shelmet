@@ -143,18 +143,28 @@ object HprofReaderAlt extends Logging {
 class HprofReaderAlt(file: File) extends Logging {
   import HprofReaderAlt._
 
-  // HeapId => Ref
-  private val refs = debox.map.Map.empty[Long, Int]
-  refs(0) = 0
+  import org.mapdb._
+  val db = DBMaker.newFileDB(new File(file + ".idx")).closeOnJvmShutdown.make
 
-  private def getRef(heapId: HeapId): Ref = {
-    if (refs.contains(heapId.id)) Ref(refs(heapId.id))
+
+  // HeapId => Ref
+  // to create inverse lookup do:
+  // https://github.com/jankotek/MapDB/blob/master/src/test/java/examples/Bidi_Map.java
+  private val refs =
+    if (db.exists("refs")) db.getHashMap[Long, Int]("refs")
+    else db.createHashMap("refs").make[Long, Int] withEffect(_.put(0, 0))
+
+  logger.info("size = " + refs.size())
+
+  private def getRef(heapId: HeapId) = Ref(
+    if (refs.containsKey(heapId.id))
+      refs.get(heapId)
     else {
-      val ref = Ref(refs.length)
-      refs(heapId.id) = ref.id
-      ref
+      val created = refs.size() + 1
+      refs.put(heapId.id, created)
+      created
     }
-  }
+  )
 
   lazy val classes = {
     val visitor = new CountingVisitor
@@ -170,7 +180,8 @@ class HprofReaderAlt(file: File) extends Logging {
 
   lazy val refCount = {
     require(prepped)
-    refs.length
+    db.commit()
+    refs.size
   }
 
   def readFile(dumpVisitor: DumpVisitorAlt, phase: Int = 2) {

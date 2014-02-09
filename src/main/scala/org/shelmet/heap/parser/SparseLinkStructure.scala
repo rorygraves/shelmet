@@ -12,6 +12,9 @@ import java.util.concurrent.atomic.{AtomicInteger, AtomicLong}
 import java.io.File
 
 
+// for persist to disc
+// https://github.com/jankotek/MapDB/blob/master/src/test/java/examples/MultiMap.java
+
 object SparseLinkStructure extends App with Logging {
 
  // val reader = new HprofReaderAlt(new File("intellij.hprof"))
@@ -35,6 +38,8 @@ object SparseLinkStructure extends App with Logging {
   logger.info(s"${links.columnSize } refs with ${links.count } links")
 
   logger.info("dumps for " + linkingVisitor.seen.length + " but " + linkingVisitor.known.length + " refs in the link structure")
+
+  reader.db.close()
 
 //  System.gc()
 //  System.gc()
