@@ -1,7 +1,8 @@
 package org.shelmet.heap.parser
 
-import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.{AtomicReferenceArray, AtomicLong}
 import com.typesafe.scalalogging.slf4j.Logging
+import java.util.concurrent.locks.ReentrantLock
 
 object `package` {
 
@@ -148,13 +149,10 @@ class LinkedMatrix(size: Int) {
 
 
 // this is a boolean graph, not a matrix
-class CompressedColumns(size: Int) extends Logging {
+class CompressedColumns(val columnSize: Int) extends Logging {
   self =>
 
-//  import debox.map.Map.{ofDim => pMap}
-
-  // gives 186mb LList (plus 25mb arrays) with 50mb long[] on 2,492,432 refs with 5,819,345 links (201MB heap)
-  // now gives 137mb (plus 10mb arrays) with 16mb long[] on 2,491,840 refs with 5,819,345 links (201MB heap)
+  // gives 139mb of LLists (plus atomic ref array) with 17mb int[] on 2,492,432 refs with 5,819,345 links (201MB heap dump)
   trait IList {
     def head: Int
 
@@ -187,38 +185,36 @@ class CompressedColumns(size: Int) extends Logging {
   }
 
 
-//  private val cols = pMap[Int, IList](expected)
-  private val cols = debox.buffer.Mutable.ofDim[IList](size)
-  (0 until size) foreach  { i =>
-    cols(i) = INil
-  }
-
   private val enters = new AtomicLong
 
-  def columns = cols.length
-
   def count = enters.get
+
+//  private val cols = new AtomicReferenceArray[IList](columnSize)
+  private val cols = Array.fill[IList](columnSize)(INil)
 
   def get(col: Int) = cols(col).toSet
 
   def get(row: Int, col: Int): Boolean = get(col)(row)
 
+//  private val locks = Array.fill(Runtime.getRuntime.availableProcessors()) {
+//    new ReentrantLock()
+//  }
+//  private def getLock(col: Int) = locks(col % locks.length)
+
   def set(row: Int, col: Int) {
-    self synchronized {
-      if (cols.length <= col) {
-        // FIXME: assert against this
-//        logger.warn("unexpected column: " + col)
-      } else {
-        val existing = cols.get(col) match {
-          case None => INil
-          case Some(existing) => existing
-        }
-       try cols(col) = row :: existing
-       catch {
-         case t: Throwable => System.exit(1)
-       }
-      }
-    }
+    require(row >= 0)
+    require(col >= 0 && col < columnSize, col + ">= " + columnSize)
+
+    cols(col) = row :: cols(col)
+//    if (!cols.compareAndSet(col, null, row :: INil)) {
+      //    if (!cols.compareAndSet(col, null, row :: INil)) {
+//      val lock = getLock(col)
+//      lock.lock()
+//      try {
+//        val existing = cols.get(col)
+//        cols.set(col, row :: existing)
+//      } finally lock.unlock()
+//    }
     enters.getAndIncrement()
   }
 }

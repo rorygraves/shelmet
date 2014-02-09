@@ -8,6 +8,7 @@ import com.typesafe.scalalogging.slf4j.Logging
 import java.util.Date
 import org.shelmet.heap.shared._
 import org.shelmet.heap.HeapId
+import scala.collection.mutable
 
 
 class Ref(val id: Int) extends AnyVal {
@@ -75,10 +76,6 @@ trait DumpVisitorAlt {
                 staticItems: List[ClassStaticEntry], 
                 fieldItems: List[ClassFieldEntry]) {}
 
-  // TODO: make constructor parameters to parser
-  def getFieldTypes(classHeapId: ClassId): Option[(List[FieldType])] = None
-
-  def instanceDump(id: HeapId, classId: ClassId) {}
   def instanceDump(id: Ref, classId: ClassId, fields: Vector[Any]) {}
   def objectArrayDump(id: Ref, classId: ClassId, elementIDs: Seq[Ref]) {}
   def primitiveArray(id: Ref, fieldType: BaseFieldType, data: Seq[AnyVal]) {}
@@ -147,7 +144,7 @@ class HprofReaderAlt(file: File) extends Logging {
   import HprofReaderAlt._
 
   // HeapId => Ref
-  val refs = debox.map.Map.empty[Long, Int]
+  private val refs = debox.map.Map.empty[Long, Int]
   refs(0) = 0
 
   private def getRef(heapId: HeapId): Ref = {
@@ -159,7 +156,27 @@ class HprofReaderAlt(file: File) extends Logging {
     }
   }
 
-  def readFile(dumpVisitor: DumpVisitorAlt) {
+  lazy val classes = {
+    val visitor = new CountingVisitor
+    readFile(visitor, 0)
+    visitor.lookup
+  }
+
+  lazy val prepped = {
+    require(!classes.isEmpty)
+    readFile(new DumpVisitorAlt {}, 1)
+    true
+  }
+
+  lazy val refCount = {
+    require(prepped)
+    refs.length
+  }
+
+  def readFile(dumpVisitor: DumpVisitorAlt, phase: Int = 2) {
+    require(phase < 2 || prepped)
+    logger.info("phase " + phase)
+
     val in = PositionDataInputStream(new BufferedInputStream(new FileInputStream(file)))
     try {
       // read the first 4 bytes
@@ -204,10 +221,8 @@ class HprofReaderAlt(file: File) extends Logging {
             val stackTraceSerialNo = reader.readInt
             val classNameID = NameId(reader.readHeapId)
             dumpVisitor.loadClass(classID, classNameID)
-          case HPROF_HEAP_DUMP =>
-            readHeapDumpSegment(length, reader, dumpVisitor, identifierSize)
-          case HPROF_HEAP_DUMP_SEGMENT =>
-            readHeapDumpSegment(length, reader, dumpVisitor, identifierSize)
+          case HPROF_HEAP_DUMP | HPROF_HEAP_DUMP_SEGMENT =>
+            readHeapDumpSegment(length, reader, dumpVisitor, identifierSize, phase)
           case HPROF_HEAP_DUMP_END =>
             dumpVisitor.heapDumpEnd()
           case HPROF_STACK_FRAME =>
@@ -221,7 +236,6 @@ class HprofReaderAlt(file: File) extends Logging {
 //            dumpVisitor.stackFrame(id, methodNameId, methodSigId, sourceFileNameId, classSer, lineNumber)
           case HPROF_STACK_TRACE =>
             reader.skipBytes(length)
-
 //            val serialNo = reader.readInt
 //            val threadSerialNo = reader.readInt
 //            val noFrames = reader.readInt
@@ -229,7 +243,6 @@ class HprofReaderAlt(file: File) extends Logging {
 //            dumpVisitor.stackTrace(serialNo, threadSerialNo, frameIDs)
           case HPROF_UNLOAD_CLASS =>
             reader.skipBytes(length)
-
 //            val classSerialNo = reader.readInt
 //            dumpVisitor.unloadClass(classSerialNo)
           case HPROF_ALLOC_SITES => reader.skipBytes(length)
@@ -257,7 +270,7 @@ class HprofReaderAlt(file: File) extends Logging {
     }
   }
 
-  private def readHeapDumpSegment(segmentLength: Long, reader: DataReader, dumpVisitor: DumpVisitorAlt, identifierSize: Int) {
+  private def readHeapDumpSegment(segmentLength: Long, reader: DataReader, dumpVisitor: DumpVisitorAlt, identifierSize: Int, phase: Int) {
 
     val endPos = reader.position + segmentLength
     while (reader.position < endPos) {
@@ -275,16 +288,11 @@ class HprofReaderAlt(file: File) extends Logging {
           val rawFieldData = reader.readBytes(fieldDataBlockSize)
 
           // we can only read the fields if the dump visitor is able to supply the class field information
-          // this typically comes from an earlier pass.
-
-          val ref = getRef(heapId)
-          dumpVisitor.getFieldTypes(classID) match {
-            case Some(sigs) =>
-              val dataReader = new DataReader(PositionDataInputStream(new ByteArrayInputStream(rawFieldData)), identifierSize)
-              dumpVisitor.instanceDump(ref, classID, readInstanceFieldsFields(sigs, dataReader))
-            case None => None
-              // FIXME: missing some calls to getRef
-              dumpVisitor.instanceDump(heapId, classID)
+          if (phase > 0) {
+            val ref = getRef(heapId)
+            val sigs = classes(classID).types
+            val dataReader = new DataReader(PositionDataInputStream(new ByteArrayInputStream(rawFieldData)), identifierSize)
+            dumpVisitor.instanceDump(ref, classID, readInstanceFieldsFields(sigs, dataReader))
           }
 
         case HPROF_GC_CLASS_DUMP =>
@@ -457,4 +465,50 @@ class HprofReaderAlt(file: File) extends Logging {
     }
   }
 
+}
+
+
+class CountingVisitor extends DumpVisitorAlt with Logging {
+  // relatively small objects, cleanliness of type safety
+  // is better than negligible debox performance improvement
+  private val classNames = mutable.HashMap[ClassId, NameId]()
+  private val names = mutable.HashMap[NameId, String]() withDefault ("unknown@" + _)
+  private val classes = mutable.HashMap[ClassId, LazyClazz]()
+
+  def lookup = classes.mapValues(_.toClazz(classes)).toMap
+
+  override def utf8String(id: NameId, string: String) {
+    names += id -> string
+  }
+
+  // presumably all the loadClass calls happen at the start
+  override def loadClass(id: ClassId, name: NameId) {
+    classNames += id -> name
+  }
+
+  case class LazyClazz(name: ClassType, superClass: ClassId, fields: List[Field]) {
+    def allFields(lookup: collection.Map[ClassId, LazyClazz]): List[Field] = fields ::: {
+      lookup.get(superClass) match {
+        case None => Nil
+        case Some(inherited) => inherited.allFields(lookup)
+      }
+    }
+
+    def toClazz(lookup: collection.Map[ClassId, LazyClazz]) = Clazz(name, allFields(lookup))
+  }
+
+  override def classDump(id: ClassId,
+                         superClassId: ClassId,
+                         instanceSize: Int,
+                         //                         constPoolEntries: Map[Int, Any],
+                         staticItems: List[ClassStaticEntry],
+                         fieldItems: List[ClassFieldEntry]) {
+    val classSig = names(classNames(id))
+    val classType = ClassType.parse(classSig)
+    val fields = fieldItems.map { fi =>
+      val fieldName = names(NameId(HeapId(fi.nameId)))
+      Field(fieldName, fi.itemType)
+    }
+    classes += id -> LazyClazz(classType, superClassId, fields)
+  }
 }
