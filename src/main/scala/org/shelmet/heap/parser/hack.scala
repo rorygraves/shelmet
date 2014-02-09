@@ -153,7 +153,8 @@ class CompressedColumns(size: Int) extends Logging {
 
 //  import debox.map.Map.{ofDim => pMap}
 
-  // gives 186mb LList (plus 25mb arrays) with 50mb long[] on 2,492,432 refs with 5,819,345 links
+  // gives 186mb LList (plus 25mb arrays) with 50mb long[] on 2,492,432 refs with 5,819,345 links (201MB heap)
+  // now gives 137mb (plus 10mb arrays) with 16mb long[] on 2,491,840 refs with 5,819,345 links (201MB heap)
   trait IList {
     def head: Int
 
@@ -188,6 +189,10 @@ class CompressedColumns(size: Int) extends Logging {
 
 //  private val cols = pMap[Int, IList](expected)
   private val cols = debox.buffer.Mutable.ofDim[IList](size)
+  (0 until size) foreach  { i =>
+    cols(i) = INil
+  }
+
   private val enters = new AtomicLong
 
   def columns = cols.length
@@ -202,13 +207,16 @@ class CompressedColumns(size: Int) extends Logging {
     self synchronized {
       if (cols.length <= col) {
         // FIXME: assert against this
-        logger.warn("unexpected column: " + col)
+//        logger.warn("unexpected column: " + col)
       } else {
         val existing = cols.get(col) match {
           case None => INil
           case Some(existing) => existing
         }
-        cols.update(col, row :: existing)
+       try cols(col) = row :: existing
+       catch {
+         case t: Throwable => System.exit(1)
+       }
       }
     }
     enters.getAndIncrement()

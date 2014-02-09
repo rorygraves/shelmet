@@ -41,14 +41,14 @@ object SparseLinkStructure extends App with Logging {
 
   logger.info(s"${links.columns } refs with ${links.count } links")
 
-//  System.gc()
-//  System.gc()
-//  System.gc()
-//  System.gc()
-//  System.gc()
-//  Thread.sleep(30000)
-//
-//  logger.info(s"${links.columns } refs with ${links.count } links")
+  System.gc()
+  System.gc()
+  System.gc()
+  System.gc()
+  System.gc()
+  Thread.sleep(30000)
+
+  logger.info(s"${links.columns } refs with ${links.count } links")
 
 }
 
@@ -100,28 +100,28 @@ class LinkingVisitor(classes: Map[ClassId, Clazz], refs: Int) extends DumpVisito
   val links = new CompressedColumns(refs)
 
   // horrible hack to block the data source
-  private val queue = new LinkedBlockingQueue[Any](Runtime.getRuntime.availableProcessors() * 2)
-  override def heapDumpEnd() {
-    while (queue.peek() != null) {
-      Thread.sleep(1000)
-    }
-  }
+//  private val queue = new LinkedBlockingQueue[Any](Runtime.getRuntime.availableProcessors() * 2)
+//  override def heapDumpEnd() {
+//    while (queue.peek() != null) {
+//      Thread.sleep(1000)
+//    }
+//  }
 
   // TODO: randomise work queue to reduce "Matrix.set" contention
   private def add(from: Ref, to: Ref) {
-    queue.put(links) // any object works
-    Future {
-      try {
+//    queue.put(links) // any object works
+//    Future {
+//      try {
         links.set(from.id, to.id)
         val tally = links.count
         if (tally % 1000000 == 0)
           logger.info(tally + " links")
-      } finally {
-        queue.poll()
-      }
-    } onFailure {
-      case t: Throwable => logger.error("", t)
-    }
+//      } finally {
+//        queue.poll()
+//      }
+//    } onFailure {
+//      case t: Throwable => logger.error("", t)
+//    }
   }
 
   override def getFieldTypes(classHeapId: ClassId): Option[List[FieldType]] =
