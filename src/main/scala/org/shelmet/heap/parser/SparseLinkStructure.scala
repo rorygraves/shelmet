@@ -2,7 +2,7 @@ package org.shelmet.heap.parser
 
 import com.typesafe.scalalogging.slf4j.Logging
 import scala.collection.mutable
-import org.shelmet.heap.shared.{FieldType, ClassType}
+import org.shelmet.heap.shared.{BaseFieldType, FieldType, ClassType}
 import org.shelmet.heap.HeapId
 import com.google.common.base.Stopwatch
 import scala.concurrent.Future
@@ -97,4 +97,7 @@ class LinkingVisitor(refs: Int) extends DumpVisitorAlt with Logging {
     }
   }
 
+  override def primitiveArray(id: Ref, fieldType: BaseFieldType, data: Seq[AnyVal]) {
+    seen add id.id
+  }
 }
