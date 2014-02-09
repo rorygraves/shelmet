@@ -144,24 +144,28 @@ class HprofReaderAlt(file: File) extends Logging {
   import HprofReaderAlt._
 
   import org.mapdb._
-  val db = DBMaker.newFileDB(new File(file + ".idx")).closeOnJvmShutdown.make
-
+  val db = DBMaker.newFileDB(new File(file + ".idx")).
+    closeOnJvmShutdown.
+    make
 
   // HeapId => Ref
   // to create inverse lookup do:
   // https://github.com/jankotek/MapDB/blob/master/src/test/java/examples/Bidi_Map.java
   private val refs =
     if (db.exists("refs")) db.getHashMap[Long, Int]("refs")
-    else db.createHashMap("refs").make[Long, Int] withEffect(_.put(0, 0))
+    else db.createHashMap("refs").counterEnable.make[Long, Int] withEffect(_.put(0, 0))
 
   logger.info("size = " + refs.size())
 
   private def getRef(heapId: HeapId) = Ref(
+    // TODO: use atomic replace
     if (refs.containsKey(heapId.id))
       refs.get(heapId)
     else {
       val created = refs.size() + 1
       refs.put(heapId.id, created)
+      if (refs.size % 10000 == 0)
+        db.commit()
       created
     }
   )
@@ -180,6 +184,7 @@ class HprofReaderAlt(file: File) extends Logging {
 
   lazy val refCount = {
     require(prepped)
+//    db.compact()
     db.commit()
     refs.size
   }
