@@ -14,10 +14,10 @@ import java.io.File
 
 object SparseLinkStructure extends App with Logging {
 
-  val reader = new HprofReaderAlt(new File("intellij.hprof"))
-  //  val reader = new HprofReader("heap.bin")
-  //  val reader = new HprofReader("sbt.hprof")
-  //  val reader = new HprofReader("visualvm.hprof")
+ // val reader = new HprofReaderAlt(new File("intellij.hprof"))
+    val reader = new HprofReaderAlt(new File("heap.bin"))
+  //  val reader = new HprofReaderAlt("sbt.hprof")
+  //  val reader = new HprofReaderAlt("visualvm.hprof")
 
 
   val watch = Stopwatch.createStarted()
@@ -34,20 +34,24 @@ object SparseLinkStructure extends App with Logging {
 
   logger.info(s"${links.columnSize } refs with ${links.count } links")
 
-  System.gc()
-  System.gc()
-  System.gc()
-  System.gc()
-  System.gc()
-  Thread.sleep(30000)
+  logger.info("only seen " + linkingVisitor.seen.length)
 
-  logger.info(s"${links.columnSize } refs with ${links.count } links")
+//  System.gc()
+//  System.gc()
+//  System.gc()
+//  System.gc()
+//  System.gc()
+//  Thread.sleep(30000)
+//
+//  logger.info(s"${links.columnSize } refs with ${links.count } links")
 
 }
 
 class LinkingVisitor(refs: Int) extends DumpVisitorAlt with Logging {
 
   val links = new CompressedColumns(refs)
+
+  val seen = debox.set.Set.empty[Int]
 
 //  private val queue = new LinkedBlockingQueue[Any](Runtime.getRuntime.availableProcessors())
 //  override def heapDumpEnd() {
@@ -74,6 +78,7 @@ class LinkingVisitor(refs: Int) extends DumpVisitorAlt with Logging {
 
 
   override def instanceDump(id: Ref, classId: ClassId, fields: Vector[Any]) {
+    seen add id.id
     (0 until fields.size) foreach {i =>
         fields(i) match {
           case to: Ref if !to.isNull =>
@@ -84,6 +89,7 @@ class LinkingVisitor(refs: Int) extends DumpVisitorAlt with Logging {
   }
 
   override def objectArrayDump(id: Ref, classId: ClassId, values: Seq[Ref]) {
+    seen add id.id
     (0 until values.size) foreach { i =>
       val to = values(i)
       if (!to.isNull)
