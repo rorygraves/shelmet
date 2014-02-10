@@ -17,7 +17,7 @@ import java.io.File
 
 object SparseLinkStructure extends App with Logging {
 
-// val reader = new HprofReaderAlt(new File("intellij.hprof"))
+ val reader = new HprofReaderAlt(new File("intellij.hprof"))
 //    val reader = new HprofReaderAlt(new File("heap.bin"))
 //    val reader = new HprofReaderAlt(new File("sbt.hprof"))
 //  val reader = new HprofReaderAlt(new File("visualvm.hprof"))
@@ -29,11 +29,11 @@ object SparseLinkStructure extends App with Logging {
 
   watch.reset()
   watch.start()
-  val linkingVisitor = new LinkingVisitor(reader.refCount)
+  val linkingVisitor = new LinkingVisitor(reader.refs.length)
   reader.readFile(linkingVisitor)
 
   val links = linkingVisitor.links
-  logger.info("LINKING pass took " + watch + " with " + reader.refCount)
+  logger.info("LINKING pass took " + watch + " with " + reader.refs.length)
 
   logger.info(s"${links.columnSize } refs with ${links.count } links")
 

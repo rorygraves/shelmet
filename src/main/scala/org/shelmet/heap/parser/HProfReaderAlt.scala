@@ -9,6 +9,7 @@ import java.util.Date
 import org.shelmet.heap.shared._
 import org.shelmet.heap.HeapId
 import scala.collection.mutable
+import scala.concurrent.{ExecutionContext, Future}
 
 
 class Ref(val id: Int) extends AnyVal {
@@ -151,17 +152,22 @@ class HprofReaderAlt(file: File) extends Logging {
   // HeapId => Ref
   // to create inverse lookup do:
   // https://github.com/jankotek/MapDB/blob/master/src/test/java/examples/Bidi_Map.java
-  private val refs =
-    if (db.exists("refs")) db.getHashMap[Long, Int]("refs")
-    else db.createHashMap("refs").counterEnable.make[Long, Int] withEffect(_.put(0, 0))
-
-  logger.info("size = " + refs.size())
+//  private val refs =
+//    if (db.exists("refs")) db.getHashMap[Long, Int]("refs")
+//    else db.createHashMap("refs").counterEnable.make[Long, Int] withEffect(_.put(0, 0))
+//
+  // persisted to DB after our initial fast use, to be used for future passes/consistency
+  val refs = debox.map.Map.empty[Long, Int]
+  refs(0) = 0
 
   private def getRef(heapId: HeapId) = Ref {
-    val ref = refs.putIfAbsent(heapId.id, refs.size)
-    if (refs.size % 100000 == 0)
-      db.commit()
-    ref
+    refs.get(heapId.id) match {
+      case None =>
+        val ref = refs.length
+        refs(heapId.id) = ref
+        ref
+      case Some(hit) => hit
+    }
   }
 
   lazy val classes = {
@@ -170,21 +176,8 @@ class HprofReaderAlt(file: File) extends Logging {
     visitor.lookup
   }
 
-  lazy val prepped = {
-    require(!classes.isEmpty)
-    readFile(new DumpVisitorAlt {}, 1)
-    true
-  }
-
-  lazy val refCount = {
-    require(prepped)
-//    db.compact()
-    db.commit()
-    refs.size
-  }
-
   def readFile(dumpVisitor: DumpVisitorAlt, phase: Int = 2) {
-    require(phase < 2 || prepped)
+    require(phase == 0 || classes.nonEmpty)
     logger.info("phase " + phase)
 
     val in = PositionDataInputStream(new BufferedInputStream(new FileInputStream(file)))
