@@ -145,7 +145,7 @@ class HprofReaderAlt(file: File) extends Logging {
 
   import org.mapdb._
   val db = DBMaker.newFileDB(new File(file + ".idx")).
-    closeOnJvmShutdown.
+    closeOnJvmShutdown.mmapFileEnable.asyncWriteEnable.
     make
 
   // HeapId => Ref
@@ -157,18 +157,12 @@ class HprofReaderAlt(file: File) extends Logging {
 
   logger.info("size = " + refs.size())
 
-  private def getRef(heapId: HeapId) = Ref(
-    // TODO: use atomic replace
-    if (refs.containsKey(heapId.id))
-      refs.get(heapId)
-    else {
-      val created = refs.size() + 1
-      refs.put(heapId.id, created)
-      if (refs.size % 10000 == 0)
-        db.commit()
-      created
-    }
-  )
+  private def getRef(heapId: HeapId) = Ref {
+    val ref = refs.putIfAbsent(heapId.id, refs.size)
+    if (refs.size % 100000 == 0)
+      db.commit()
+    ref
+  }
 
   lazy val classes = {
     val visitor = new CountingVisitor

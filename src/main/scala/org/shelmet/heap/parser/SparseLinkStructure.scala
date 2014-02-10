@@ -17,10 +17,10 @@ import java.io.File
 
 object SparseLinkStructure extends App with Logging {
 
- val reader = new HprofReaderAlt(new File("intellij.hprof"))
- //   val reader = new HprofReaderAlt(new File("heap.bin"))
-  //  val reader = new HprofReaderAlt("sbt.hprof")
-  //  val reader = new HprofReaderAlt("visualvm.hprof")
+// val reader = new HprofReaderAlt(new File("intellij.hprof"))
+//    val reader = new HprofReaderAlt(new File("heap.bin"))
+//    val reader = new HprofReaderAlt(new File("sbt.hprof"))
+//  val reader = new HprofReaderAlt(new File("visualvm.hprof"))
 
 
   val watch = Stopwatch.createStarted()
