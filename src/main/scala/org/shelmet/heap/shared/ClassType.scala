@@ -43,14 +43,14 @@ abstract class ArrayClassType[C] extends ClassType {
   def containedType : C
 }
 
-class ObjectArrayClassType(val containedType : ClassType) extends ArrayClassType[ClassType] {
+case class ObjectArrayClassType(containedType : ClassType) extends ArrayClassType[ClassType] {
   override def toString = containedType.toString + "[]"
 }
 
-class BaseArrayClassType(val containedType : BaseFieldType) extends ArrayClassType[FieldType] {
+case class BaseArrayClassType(containedType : BaseFieldType) extends ArrayClassType[FieldType] {
   override def toString = containedType.typeName + "[]"
 }
 
-class SimpleClassType(classname : String) extends ClassType {
+case class SimpleClassType(classname : String) extends ClassType {
   override def toString = classname
 }

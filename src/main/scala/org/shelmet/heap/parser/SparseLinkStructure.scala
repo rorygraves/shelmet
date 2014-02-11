@@ -7,12 +7,40 @@ import org.shelmet.heap.HeapId
 import com.google.common.base.Stopwatch
 import debox.map.{Map => DMap}
 import java.io.{BufferedInputStream, File, FileInputStream}
+import org.mapdb.{Fun, BTreeKeySerializer, DBMaker}
+import org.mapdb.Fun.Tuple2
 
 object SparseLinkStructure extends App with Logging {
 
-  val file = "intellij.hprof"
+  val file = new File("intellij.hprof")
 
-  val reader = new HprofReader(file)
+  val dbFile = new File(file + ".idx")
+  def clearDb = {
+    dbFile.delete()
+    new File(dbFile + ".p").delete()
+    new File(dbFile + ".t").delete()
+    Thread.sleep(1000)
+  }
+  def loadDb = DBMaker.newFileDB(dbFile).
+    asyncWriteEnable.
+    fullChunkAllocationEnable.
+    make()
+
+  val db = {
+    val trial = loadDb
+    if (trial.getAtomicBoolean("indexed").get) {
+      val ts = trial.getTreeSet[Tuple2[Int, Int]]("linkedby")
+      logger.info("links = " + ts.size())
+      ???
+    } else {
+      logger.info("creating a fresh DB")
+      trial.close()
+      clearDb
+      loadDb
+    }
+  }
+
+  val reader = new HprofReader(file.toString)
 
   def timed[T <: AnyRef](text: String)(f: => T): T = {
     val watch = Stopwatch.createStarted()
@@ -23,7 +51,7 @@ object SparseLinkStructure extends App with Logging {
 
   timed("reading full file") {
     // for benchmarking
-    val reader = new BufferedInputStream(new FileInputStream(new File(file)))
+    val reader = new BufferedInputStream(new FileInputStream(file))
     try {
       val buffer = Array.ofDim[Byte](1024)
       while (reader.read(buffer) != -1) {}
@@ -36,6 +64,7 @@ object SparseLinkStructure extends App with Logging {
     "done"
   }
 
+  // memory cost is about 2 * number of instances in the system (plus negligible for classes)
   val (classes, refs, refTypes, arrays) = timed("class visitor") {
     val visitor = new ClassVisitor
     reader.readFile(visitor)
@@ -51,7 +80,50 @@ object SparseLinkStructure extends App with Logging {
     visitor.links
   }
 
-  logger.info(s"${links.columnSize } refs, ${links.count } links, ${classes.size } classes and ${refs.length - links.columnSize } refs without metadata")
+  logger.info(s"${links.columnSize } refs, ${links.entered} links parsed, (${links.count } unique), ${classes.size } classes and ${refs.length - links.columnSize } refs without metadata")
+
+  timed("persisting everything") {
+    db.createTreeMap("classes").makeLongMap[Clazz] withEffect { ts =>
+      classes foreach {c => ts.put(c._1.id, c._2)}
+      logger.info("classes = " + ts.size())
+    }
+    db.commit()
+    logger.info("classes done")
+    db.createTreeMap("refs").makeLongMap[Int] withEffect { ts =>
+      refs foreach {(k,v) => ts.put(k, v)}
+      logger.info("refs = " + ts.size())
+    }
+    db.commit()
+    logger.info("refs done")
+    db.createTreeMap("refType").makeLongMap[Long] withEffect { ts =>
+      refTypes foreach {(k,v) => ts.put(k, v.id)}
+      logger.info("refType = " + ts.size())
+    }
+    db.commit()
+    logger.info("refTypes done")
+    db.createTreeMap("arrays").makeLongMap[Int] withEffect { ts =>
+      arrays foreach {(k,v) => ts.put(k, v)}
+      logger.info("arrays = " + ts.size())
+    }
+    db.commit()
+    logger.info("arrays done")
+    db.createTreeSet("linkedby").serializer(BTreeKeySerializer.TUPLE2).make[Tuple2[Int, Int]] withEffect { ts =>
+      // https://github.com/jankotek/MapDB/blob/master/src/test/java/examples/MultiMap.java
+      // note, we could also be fancy and save a long (64 = 32 * 2)
+      (0 until links.columnSize) foreach { i =>
+        links.get(i) foreach {j =>
+          ts.add(Fun.t2(i, j))
+        }
+      }
+      logger.info("linkedby = " + ts.size())
+    }
+    db.commit()
+    logger.info("linkedby done")
+    db.createAtomicBoolean("indexed", true)
+    db.commit()
+    db.close()
+    "done"
+  }
 
 }
 
@@ -125,6 +197,11 @@ class ClassVisitor extends DumpVisitor with RefRecorder with Logging {
   val refs = DMap.empty[Long, Int]
   refs(0) = 0
 
+  // Ref => ClassId
+  val refTypes = DMap.empty[Int, ClassId]
+  // Ref => array size in bytes
+  val arrays = DMap.empty[Int, Int]
+
   override def utf8String(id: Long, string: String) {
     names += NameId(id) -> string
   }
@@ -172,11 +249,6 @@ class ClassVisitor extends DumpVisitor with RefRecorder with Logging {
     classes += ClassId(id) -> LazyClazz(classType, ClassId(superClassId), fields)
   }
 
-  // Ref => ClassId
-  val refTypes = DMap.empty[Int, ClassId]
-  // Ref => array size in bytes
-  val arrays = DMap.empty[Int, Int]
-
   override def instanceDump(id: HeapId, x: Int, classId: HeapId, fields: Option[Vector[Any]], xx: Int) {
     refTypes(getRef(id).id) = ClassId(classId)
   }
@@ -209,7 +281,7 @@ class LinkingVisitor(val classes: Map[ClassId, Clazz], val refs: DMap[Long, Int]
     if (to.id >= links.columnSize) return
 
     links.set(from.id, to.id)
-    val tally = links.count
+    val tally = links.entered
     if (tally % 1000000 == 0)
       logger.info(tally + " links")
   }
@@ -228,7 +300,7 @@ class LinkingVisitor(val classes: Map[ClassId, Clazz], val refs: DMap[Long, Int]
   override def objectArrayDump(id: HeapId, x: Int, numElements: Int, classId: HeapId, elementIDs: Seq[HeapId]) {
     val from = getRef(id)
     elementIDs foreach { to =>
-      link(from, getRef(to))
+      if (!to.isNull) link(from, getRef(to))
     }
   }
 }

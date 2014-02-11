@@ -153,7 +153,7 @@ class CompressedColumns(val columnSize: Int) extends Logging {
   self =>
 
   // gives 139mb of LLists (plus atomic ref array) with 17mb int[] on 2,492,432 refs with 5,819,345 links (201MB heap dump)
-  trait IList {
+  sealed trait IList {
     def head: Int
 
     def tail: IList = ???
@@ -162,32 +162,38 @@ class CompressedColumns(val columnSize: Int) extends Logging {
 
     def isEmpty: Boolean
 
-    def toSet: debox.set.Set[Int] =
-      debox.set.Set[Int] withEffect {
-        collection =>
-          var probe = this
-          while (!probe.isEmpty) {
-            collection add probe.head
-            probe = probe.tail
-          }
+    def contains(e: Int): Boolean = false
+
+    def toSet: debox.set.Set[Int] = {
+      debox.set.Set.empty[Int] withEffect { set =>
+        var probe = this
+        while (!probe.isEmpty) {
+          set add probe.head
+          probe = probe.tail
+        }
       }
+    }
   }
 
   object INil extends IList {
     def head = ???
 
     def isEmpty = true
+    override def toString = "INil"
   }
 
   class ILink(override val head: Int,
               override val tail: IList) extends IList {
     def isEmpty = false
+    override def toString = head + "::" + tail
   }
-
 
   private val enters = new AtomicLong
 
-  def count = enters.get
+  // don't call until we finish creating!
+  lazy val count: Long = (0L /: cols){_ + _.toSet.length.toLong}
+
+  def entered = enters.get
 
 //  private val cols = new AtomicReferenceArray[IList](columnSize)
   private val cols = Array.fill[IList](columnSize)(INil)
@@ -202,10 +208,15 @@ class CompressedColumns(val columnSize: Int) extends Logging {
 //  private def getLock(col: Int) = locks(col % locks.length)
 
   def set(row: Int, col: Int) {
-    require(row >= 0)
-    require(col >= 0 && col < columnSize, col + ">= " + columnSize)
+    // (0,0) is null
+    require(row > 0)
+    require(col > 0 && col < columnSize, col + ">= " + columnSize)
 
-    cols(col) = row :: cols(col)
+    // we intentionally allow dupes for insertion speed (e.g. class / array can ref same thing twice)
+//    logger.info(row + " " + col)
+    cols.update(col, row :: cols(col))
+//    logger.info(row + " appended to " + col + " = " + cols(col))
+
 //    if (!cols.compareAndSet(col, null, row :: INil)) {
       //    if (!cols.compareAndSet(col, null, row :: INil)) {
 //      val lock = getLock(col)
