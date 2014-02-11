@@ -17,11 +17,12 @@ sealed abstract class FieldType(val jvmTypeChar : Char,val typeName : String) {
 // class representing base type fields (e.g int,short,boolean
 sealed abstract class BaseFieldType(jvmTypeChar : Char,typeName : String,val fieldSize : Int) extends FieldType(jvmTypeChar,typeName)
 
-case object BooleanFieldType extends BaseFieldType('Z',"boolean",1)
-case object ByteFieldType extends BaseFieldType('B',"byte",1)
+// these are 64 bit UNIX field sizes
+case object BooleanFieldType extends BaseFieldType('Z',"boolean",4)
+case object ByteFieldType extends BaseFieldType('B',"byte",2)
 case object ShortFieldType extends BaseFieldType('S',"short",2)
 case object CharFieldType extends BaseFieldType('C',"char",2)
-case object IntFieldType extends BaseFieldType('I',"int",4)
+case object IntFieldType extends BaseFieldType('I',"int",8)
 case object LongFieldType extends BaseFieldType('J',"long",8)
 case object FloatFieldType extends BaseFieldType('F',"float",4)
 case object DoubleFieldType extends BaseFieldType('D',"double",8)
