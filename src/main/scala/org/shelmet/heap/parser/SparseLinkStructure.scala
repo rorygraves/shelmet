@@ -80,7 +80,18 @@ object SparseLinkStructure extends App with Logging {
     visitor.links
   }
 
-  logger.info(s"${links.columnSize } refs, ${links.entered} links parsed, (${links.count } unique), ${classes.size } classes and ${refs.length - links.columnSize } refs without metadata")
+  def size[K,V](map: DMap[K,V]) = {
+    var count = 0
+    map foreach { (k,v) =>
+      count += 1
+    }
+    count
+  }
+
+
+  // FIXME: DMap doesn't report correct length
+
+  logger.info(s"${refs.length } refs (${size(refs)}), ${links.entered} links parsed, (${links.count } unique), ${classes.size } classes and ${refs.length - links.columnSize } refs without metadata")
 
   timed("persisting everything") {
     db.createTreeMap("classes").makeLongMap[Clazz] withEffect { ts =>
@@ -91,7 +102,6 @@ object SparseLinkStructure extends App with Logging {
     logger.info("classes done")
     db.createTreeMap("refs").makeLongMap[Int] withEffect { ts =>
       refs foreach {(k,v) => ts.put(k, v)}
-      logger.info("refs = " + ts.size())
     }
     db.commit()
     logger.info("refs done")
