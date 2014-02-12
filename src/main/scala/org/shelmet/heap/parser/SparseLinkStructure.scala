@@ -14,19 +14,37 @@ object SparseLinkStructure extends App with Logging {
 
   val file = new File("intellij.hprof")
 
-  val dbFile = new File(file + ".idx")
-  def clearDb = {
+}
+
+class PersistentStructure(heapDump: File) extends Logging {
+  // TODO: these would work really well as pimps
+
+  def typez(ref: Ref): Typez = ???
+
+  def referencedBy(ref: Ref): Iterable[Ref] = ???
+
+// needs forward lookup
+//  def references(ref: Ref): Iterable[Ref] = ???
+
+// needs RAM loader
+//  def values(ref: Ref)
+
+
+//  logger.info(s"${refs.length } refs (${size(refs)}), ${links.entered} links parsed, (${links.count } unique), ${classes.size } classes and ${refs.length - links.columnSize } refs without metadata")
+
+  private val dbFile = new File(heapDump + ".idx")
+  private def clearDb = {
     dbFile.delete()
     new File(dbFile + ".p").delete()
     new File(dbFile + ".t").delete()
     Thread.sleep(1000)
   }
-  def loadDb = DBMaker.newFileDB(dbFile).
+  private def loadDb = DBMaker.newFileDB(dbFile).
     asyncWriteEnable.
     fullChunkAllocationEnable.
     make()
 
-  val db = {
+  private val db = {
     val trial = loadDb
     if (trial.getAtomicBoolean("indexed").get) {
       val ts = trial.getTreeSet[Tuple2[Int, Int]]("linkedby")
@@ -80,62 +98,65 @@ object SparseLinkStructure extends App with Logging {
     visitor.links
   }
 
-  def size[K,V](map: DMap[K,V]) = {
-    var count = 0
-    map foreach { (k,v) =>
-      count += 1
-    }
-    count
-  }
+//  def size[K,V](map: DMap[K,V]) = {
+//    var count = 0
+//    map foreach { (k,v) =>
+//      count += 1
+//    }
+//    count
+//  }
 
 
   // FIXME: DMap doesn't report correct length
 
-  logger.info(s"${refs.length } refs (${size(refs)}), ${links.entered} links parsed, (${links.count } unique), ${classes.size } classes and ${refs.length - links.columnSize } refs without metadata")
 
-  timed("persisting everything") {
-    db.createTreeMap("classes").makeLongMap[Clazz] withEffect { ts =>
-      classes foreach {c => ts.put(c._1.id, c._2)}
-      logger.info("classes = " + ts.size())
-    }
-    db.commit()
-    logger.info("classes done")
-    db.createTreeMap("refs").makeLongMap[Int] withEffect { ts =>
-      refs foreach {(k,v) => ts.put(k, v)}
-    }
-    db.commit()
-    logger.info("refs done")
-    db.createTreeMap("refType").makeLongMap[Long] withEffect { ts =>
-      refTypes foreach {(k,v) => ts.put(k, v.id)}
-      logger.info("refType = " + ts.size())
-    }
-    db.commit()
-    logger.info("refTypes done")
-    db.createTreeMap("arrays").makeLongMap[Int] withEffect { ts =>
-      arrays foreach {(k,v) => ts.put(k, v)}
-      logger.info("arrays = " + ts.size())
-    }
-    db.commit()
-    logger.info("arrays done")
-    db.createTreeSet("linkedby").serializer(BTreeKeySerializer.TUPLE2).make[Tuple2[Int, Int]] withEffect { ts =>
-      // https://github.com/jankotek/MapDB/blob/master/src/test/java/examples/MultiMap.java
-      // note, we could also be fancy and save a long (64 = 32 * 2)
-      (0 until links.columnSize) foreach { i =>
-        links.get(i) foreach {j =>
-          ts.add(Fun.t2(i, j))
-        }
-      }
-      logger.info("linkedby = " + ts.size())
-    }
-    db.commit()
-    logger.info("linkedby done")
-    db.createAtomicBoolean("indexed", true)
-    db.commit()
-    db.close()
-    "done"
-  }
+//  timed("persisting everything") {
+//    db.createTreeMap("classes").makeLongMap[Clazz] withEffect { ts =>
+//      classes foreach {c => ts.put(c._1.id, c._2)}
+//      logger.info("classes = " + ts.size())
+//    }
+//    db.commit()
+//    logger.info("classes done")
+//    db.createTreeMap("refs").makeLongMap[Int] withEffect { ts =>
+//      refs foreach {(k,v) => ts.put(k, v)}
+//    }
+//    db.commit()
+//    logger.info("refs done")
+//    db.createTreeMap("refType").makeLongMap[Long] withEffect { ts =>
+//      refTypes foreach {(k,v) => ts.put(k, v.id)}
+//      logger.info("refType = " + ts.size())
+//    }
+//    db.commit()
+//    logger.info("refTypes done")
+//    db.createTreeMap("arrays").makeLongMap[Int] withEffect { ts =>
+//      arrays foreach {(k,v) => ts.put(k, v)}
+//      logger.info("arrays = " + ts.size())
+//    }
+//    db.commit()
+//    logger.info("arrays done")
+//    db.createTreeSet("linkedby").serializer(BTreeKeySerializer.TUPLE2).make[Tuple2[Int, Int]] withEffect { ts =>
+//    // https://github.com/jankotek/MapDB/blob/master/src/test/java/examples/MultiMap.java
+//    // note, we could also be fancy and save a long (64 = 32 * 2)
+//      (0 until links.columnSize) foreach { i =>
+//        links.get(i) foreach {j =>
+//          ts.add(Fun.t2(i, j))
+//        }
+//      }
+//      logger.info("linkedby = " + ts.size())
+//    }
+//    db.commit()
+//    logger.info("linkedby done")
+//    db.createAtomicBoolean("indexed", true)
+//    db.commit()
+//    db.close()
+//    "done"
+//  }
+}
+
+class PersistingParser {
 
 }
+
 
 class Ref(val id: Int) extends AnyVal {
   def isNull = id == 0
@@ -164,10 +185,14 @@ case class Field(name: String, fieldType: FieldType) {
   def isRef = fieldType.isObjectType
 }
 
+sealed trait Typez
+
+case class Arraz(base: BaseFieldType, length: Int) extends Typez
+
 // ignoring everything I don't care about for now
 // ideally this would be an interim object and the version with the full
 // fields would be passed around after the initial scan
-case class Clazz(name: ClassType, fields: List[Field]) {
+case class Clazz(name: ClassType, fields: List[Field]) extends Typez {
   def types = fields map {
     _.fieldType
   }
