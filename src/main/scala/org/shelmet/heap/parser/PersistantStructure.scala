@@ -11,9 +11,9 @@ import org.shelmet.heap.HeapId
 import org.mapdb.BTreeKeySerializer.Tuple2KeySerializer
 import Serializer._
 import scala.concurrent.{ExecutionContext, Future}
-import ExecutionContext.Implicits.global
 import java.util.concurrent.atomic.AtomicLong
 import scala.collection.JavaConverters._
+import java.util.concurrent.{Executors, Semaphore}
 
 object PersistantStructure extends App with Logging {
 
@@ -23,8 +23,6 @@ object PersistantStructure extends App with Logging {
   println(Ref(31762658600L) references)
   println(Ref(31762658600L) referencedBy)
   println(Ref(31762658600L) typez)
-
-  Thread.sleep(30000)
 }
 
 class HeapLookup private(db: DB) extends Logging {
@@ -90,6 +88,7 @@ object HeapLookup extends Logging {
       fullChunkAllocationEnable.
       closeOnJvmShutdown.
       transactionDisable.
+      syncOnCommitDisable.
       mmapFileEnableIfSupported.
       cacheSoftRefEnable.
       make() withEffect { db =>
@@ -149,12 +148,15 @@ class PersistingParser(db: DB, heapDump: File) extends Logging {
     //      "done"
     //    }
 
+    import ExecutionContext.Implicits.global
+
     val classes = timed("class visitor") {
       val visitor = new ClassVisitor(db)
       reader.readFile(visitor)
 
       db.createAtomicLong("refTypesCount", visitor.refTypesCount.get)
       db.createAtomicLong("arraysCount", visitor.arraysCount.get)
+      db.commit()
 
       visitor.lookup
     }
@@ -166,6 +168,7 @@ class PersistingParser(db: DB, heapDump: File) extends Logging {
       reader.readFile(visitor)
       db.createAtomicLong("linksToCount", visitor.count.get)
       db.createAtomicLong("linkedByCount", visitor.count.get)
+      db.commit()
       "done"
     }
 
@@ -176,6 +179,7 @@ class PersistingParser(db: DB, heapDump: File) extends Logging {
       classes foreach { (k, v) => ts.put(k, v) }
       db.createAtomicLong("classesCount", classes.size)
     }
+    db.commit()
   }
 
 }
@@ -206,7 +210,7 @@ case class Clazz(name: ClassType, fields: List[Field]) extends Typez {
   def fullFieldName(i: Int) = name + "." + fields(i).name
 }
 
-class ClassVisitor(db: DB) extends DumpVisitor with Logging {
+class ClassVisitor(db: DB) extends DumpVisitor with Logging with ThrottledFutureSupport {
 
   val arrays = db.createTreeMap("arrays").counterEnable.valueSerializer(JAVA).makeLongMap[Arraz]
   val arraysCount = new AtomicLong
@@ -265,21 +269,21 @@ class ClassVisitor(db: DB) extends DumpVisitor with Logging {
 
   override def instanceDump(id: HeapId, x: Int, classId: HeapId, fields: Option[Vector[Any]], xx: Int) {
     refTypesCount.incrementAndGet()
-    Future {
+    ThrottledFuture {
       refTypes.put(id.id, classId.id)
     }
   }
 
   override def objectArrayDump(id: HeapId, x: Int, numElements: Int, classId: HeapId, elementIDs: Seq[HeapId]) {
     arraysCount.incrementAndGet()
-    Future {
+    ThrottledFuture {
       arrays.put(id.id, Arraz(ObjectFieldType, numElements))
     }
   }
 
   override def primitiveArray(id: HeapId, x: Int, fieldType: BaseFieldType, data: Seq[AnyVal]) {
     arraysCount.incrementAndGet()
-    Future {
+    ThrottledFuture {
       arrays.put(id.id, Arraz(fieldType, data.length))
     }
   }
@@ -296,7 +300,32 @@ trait ClassAwareDumpVisitor extends DumpVisitor {
 }
 
 
-class LinkingVisitor(db: DB, val classes: DMap[Long, Clazz]) extends ClassAwareDumpVisitor with Logging {
+trait ThrottledFutureSupport {
+  private val cpus = Runtime.getRuntime.availableProcessors
+  private val futures = new Semaphore(cpus * 2, true)
+
+  // context is specific to low cpu, high I/O scenarios
+//  protected implicit val context = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(cpus * 4))
+  protected implicit val context = ExecutionContext.Implicits.global
+
+  // yuck, the taste of blocking.
+  // the correct way to do this is with parallel Observables
+  // that apply the throttling to the producer side and share
+  // threads between producer and consumer
+  protected def ThrottledFuture[T](block: => T) = {
+    // semaphores are ridiculously inefficient for this... orders of magnitude
+    // slower than single threaded.
+
+//    futures.acquire()
+//    Future {
+//      futures.release()
+      block
+//    }
+  }
+}
+
+
+class LinkingVisitor(db: DB, val classes: DMap[Long, Clazz]) extends ClassAwareDumpVisitor with Logging with ThrottledFutureSupport {
 
   private val linkSerializer = new Tuple2KeySerializer[Long, Long](null, LONG, LONG)
 
@@ -309,7 +338,7 @@ class LinkingVisitor(db: DB, val classes: DMap[Long, Clazz]) extends ClassAwareD
     if (tos.isEmpty) return
 
     count.getAndAdd(tos.size)
-    Future {
+    ThrottledFuture {
       tos foreach { to =>
         linkedBy.add(Fun.t2(to.id, from.id))
         linksTo.add(Fun.t2(from.id, to.id))
@@ -317,8 +346,10 @@ class LinkingVisitor(db: DB, val classes: DMap[Long, Clazz]) extends ClassAwareD
     }
 
     val tally = count.get
-    if (tally % 1000000 == 0)
+    if (tally % 1000000 == 0) {
       logger.info(tally + " links")
+      db.commit()
+    }
   }
 
   override def instanceDump(id: HeapId, x: Int, classId: HeapId, fields: Option[Vector[Any]], xx: Int) {
