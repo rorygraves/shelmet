@@ -11,21 +11,61 @@ object FieldType {
   }
 }
 
-sealed abstract class FieldType(val jvmTypeChar : Char,val typeName : String) {
-  val isObjectType = false
+sealed trait FieldType {
+  def jvmTypeChar : Char
+  def typeName : String
+  def isObjectType: Boolean
 }
 // class representing base type fields (e.g int,short,boolean
-sealed abstract class BaseFieldType(jvmTypeChar : Char,typeName : String,val fieldSize : Int) extends FieldType(jvmTypeChar,typeName)
-
-case object BooleanFieldType extends BaseFieldType('Z',"boolean",1)
-case object ByteFieldType extends BaseFieldType('B',"byte",1)
-case object ShortFieldType extends BaseFieldType('S',"short",2)
-case object CharFieldType extends BaseFieldType('C',"char",2)
-case object IntFieldType extends BaseFieldType('I',"int",4)
-case object LongFieldType extends BaseFieldType('J',"long",8)
-case object FloatFieldType extends BaseFieldType('F',"float",4)
-case object DoubleFieldType extends BaseFieldType('D',"double",8)
-case object ObjectFieldType extends FieldType('L',"object") {
-  override val isObjectType = true
+sealed trait BaseFieldType extends FieldType {
+  def fieldSize: Int
+  override def isObjectType = false
 }
 
+// these are 64 bit UNIX field sizes
+// and overly verbose to enable serialization
+case object BooleanFieldType extends BaseFieldType {
+  def jvmTypeChar = 'Z'
+  def typeName = "boolean"
+  def fieldSize = 4
+}
+case object ByteFieldType extends BaseFieldType {
+  def jvmTypeChar = 'B'
+  def typeName = "byte"
+  def fieldSize = 2
+}
+case object ShortFieldType extends BaseFieldType {
+  def jvmTypeChar = 'S'
+  def typeName = "short"
+  def fieldSize = 2
+}
+case object CharFieldType extends BaseFieldType {
+  def jvmTypeChar = 'C'
+  def typeName = "char"
+  def fieldSize = 2
+}
+case object IntFieldType extends BaseFieldType {
+  def jvmTypeChar = 'I'
+  def typeName = "int"
+  def fieldSize = 8
+}
+case object LongFieldType extends BaseFieldType {
+  def jvmTypeChar = 'J'
+  def typeName = "long"
+  def fieldSize = 8
+}
+case object FloatFieldType extends BaseFieldType {
+  def jvmTypeChar = 'F'
+  def typeName = "float"
+  def fieldSize = 4
+}
+case object DoubleFieldType extends BaseFieldType {
+  def jvmTypeChar = 'D'
+  def typeName = "double"
+  def fieldSize = 8
+}
+case object ObjectFieldType extends FieldType {
+  def jvmTypeChar = 'L'
+  def typeName = "object"
+  def isObjectType = true
+}
