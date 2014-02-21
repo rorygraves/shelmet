@@ -42,8 +42,35 @@ object Snapshot extends Logging {
     snapshot.calculateRetainedSizes()
     logger.info("Snapshot load complete.")
     Snapshot.clearInstance()
+//    calcAverageStoredSize(snapshot.allObjects)
     snapshot
   }
+
+//  def calcAverageStoredSize(objs : Iterable[JavaHeapObject]) {
+//    var totalSize = 0L
+//    var count = 0L
+//    var smallest  = Integer.MAX_VALUE
+//    var largest = Integer.MIN_VALUE
+//
+//    objs.foreach { obj =>
+//      val baos = new ByteArrayOutputStream()
+//      val oos = new ObjectOutputStream(new GZIPOutputStream(baos))
+//      oos.writeObject(obj)
+//      oos.close()
+//      val objSize = baos.toByteArray.size
+//      if(objSize < smallest)
+//        smallest = objSize
+//
+//      if(objSize > largest)
+//        largest = objSize
+//      totalSize += objSize
+//      count += 1
+//    }
+//
+//    val avgSize = totalSize /count
+//    println(s"count = $count, avgSize = $avgSize")
+//    println(s"largest = $largest, smallest = $smallest")
+//  }
 
   private val instanceHolder = new ThreadLocal[Snapshot]
   def instance : Snapshot = Option(instanceHolder.get()).getOrElse(throw new IllegalStateException("Instance not set for query"))

@@ -51,5 +51,7 @@ class PositionDataInputStream private (inRef: PositionDataInputStream.PositionIn
     throw new UnsupportedOperationException("reset")
   }
 
+  def readUnsignedInt: Long = 0x0FFFFFFFFL & readInt
+
   def position: Long = inRef.position
 }

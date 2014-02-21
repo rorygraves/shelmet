@@ -65,14 +65,48 @@ object HprofReader extends Logging {
         throw new IOException("Invalid type id of " + typeId)
     }
   }
+
+  /**
+   * It seems the HPROF file writes the length field as an unsigned int.
+   */
+  val MAX_UNSIGNED_4BYTE_INT: Long = 4294967296L
 }
 
 //***************************************************************************************************************
 class HprofReader(fileName: String) extends Logging {
   import HprofReader._
+  /**
+   * It seems the HPROF spec only allows 4 bytes for record length, so a
+   * record length greater than 4GB will be overflowed and will be useless and
+   * throw off the rest of the processing. There's no good way to tell the
+   * overflow has occurred but if the strictness preference has been set to
+   * permissive, we can check the most common case of a heap dump record that
+   * should run to the end of the file.
+   *
+   * @param fileSize The total file size.
+   * @param curPos   The current position of the input stream.
+   * @param record   The record identifier.
+   * @param length   The length read from the record.
+   * @return The updated length or the original length if no update is made.
+   */
+  protected def updateLengthIfNecessary(fileSize: Long, curPos: Long, record: Int, length: Long): Long = {
+    var res = length
+    if (record == HPROF_HEAP_DUMP) {
+      val bytesLeft: Long = fileSize - curPos - 9
+      if (bytesLeft >= MAX_UNSIGNED_4BYTE_INT) {
+        if ((bytesLeft - length) % MAX_UNSIGNED_4BYTE_INT == 0) {
+          logger.warn("LENGTH OVERFLOW adjustment")
+          res = bytesLeft
+        }
+      }
+    }
+    res
+  }
+
   def readFile(dumpVisitor : DumpVisitor) {
 
-    val in = PositionDataInputStream(new BufferedInputStream(new FileInputStream(new File(fileName))))
+    val file = new File(fileName)
+    val in = PositionDataInputStream(new BufferedInputStream(new FileInputStream(file)))
     try {
       // read the first 4 bytes
       if(in.readInt() != MAGIC_NUMBER)
@@ -86,6 +120,7 @@ class HprofReader(fileName: String) extends Logging {
       if (identifierSize != 4 && identifierSize != 8)
         throw new IOException(s"Unknown identifier size: $identifierSize, expected 4 or 8")
 
+      val fileSize = file.length
       val reader = new DataReader(in,identifierSize)
 
       dumpVisitor.identifierSize(identifierSize)
@@ -94,12 +129,23 @@ class HprofReader(fileName: String) extends Logging {
       val creationDate = new Date(in.readLong)
       dumpVisitor.creationDate(creationDate)
 
-      while (in.available() != 0) {
+
+
+      var curPos: Long = in.position
+
+      while (curPos < fileSize) {
         val itemType = in.readUnsignedByte
         in.readInt
         val position = in.position
         // each record at the root level defines it length
-        val length: Int = (in.readInt & 0xffffffffL).asInstanceOf[Int]
+        val readLength: Long = in.readUnsignedInt
+
+        val length = updateLengthIfNecessary(fileSize, curPos, itemType, readLength)
+
+
+
+
+
         logger.debug(s"Read record type $itemType, length $length at position ${Misc.toHex(position)}")
 
         if (length < 0)
@@ -108,7 +154,7 @@ class HprofReader(fileName: String) extends Logging {
         itemType match {
           case HPROF_UTF8 =>
             val id = reader.readID
-            val str = reader.readBoundedString(length - reader.identifierSize)
+            val str = reader.readBoundedString((length - reader.identifierSize).asInstanceOf[Int])
             dumpVisitor.utf8String(id,str)
           case HPROF_LOAD_CLASS =>
             val classSerialNo = reader.readInt
@@ -158,6 +204,9 @@ class HprofReader(fileName: String) extends Logging {
             reader.skipBytes(length)
             logger.warn(s"Ignoring unrecognized record type $itemType")
         }
+
+
+        curPos = in.position
       }
     }finally {
       in.close()
