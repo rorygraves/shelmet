@@ -12,3 +12,4 @@ src/test/resources/actual/
 .cache
 .classpath
 .project
+largedump.hprof
