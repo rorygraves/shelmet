@@ -13,7 +13,7 @@ class DataReader(in: PositionDataInputStream,val identifierSize : Int) {
 
   def position = in.position
 
-  def readHeapId : HeapId = HeapId(readID)
+  def readHeapId : HeapId = HeapId.make(readID)
 
   def skipBytes(length: Long) {
     in.skipBytes(length.asInstanceOf[Int])

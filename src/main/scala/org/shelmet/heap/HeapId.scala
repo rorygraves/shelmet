@@ -11,3 +11,10 @@ case class HeapId(id : Long) extends Ordered[HeapId] {
   def getOpt : Option[JavaHeapObject] = Snapshot.instance.findHeapObject(this)
   def get : JavaHeapObject = getOpt.get
 }
+
+object HeapId {
+  val Null = new HeapId(0)
+  def make(id : Long) : HeapId = {
+    if(id == 0) Null else HeapId(id)
+  }
+}

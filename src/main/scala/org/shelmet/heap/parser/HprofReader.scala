@@ -103,6 +103,8 @@ class HprofReader(fileName: String) extends Logging {
     res
   }
 
+  var fileSize : Long = 0
+
   def readFile(dumpVisitor : DumpVisitor) {
 
     val file = new File(fileName)
@@ -120,7 +122,6 @@ class HprofReader(fileName: String) extends Logging {
       if (identifierSize != 4 && identifierSize != 8)
         throw new IOException(s"Unknown identifier size: $identifierSize, expected 4 or 8")
 
-      val fileSize = file.length
       val reader = new DataReader(in,identifierSize)
 
       dumpVisitor.identifierSize(identifierSize)
@@ -129,7 +130,7 @@ class HprofReader(fileName: String) extends Logging {
       val creationDate = new Date(in.readLong)
       dumpVisitor.creationDate(creationDate)
 
-
+      val fileSize = file.length
 
       var curPos: Long = in.position
 
@@ -141,10 +142,6 @@ class HprofReader(fileName: String) extends Logging {
         val readLength: Long = in.readUnsignedInt
 
         val length = updateLengthIfNecessary(fileSize, curPos, itemType, readLength)
-
-
-
-
 
         logger.debug(s"Read record type $itemType, length $length at position ${Misc.toHex(position)}")
 
@@ -213,14 +210,26 @@ class HprofReader(fileName: String) extends Logging {
     }
   }
 
+  var lastProgress = 0
+
+  def logProgress(reader : DataReader) {
+    val percent = (reader.position/fileSize.toDouble * 100).asInstanceOf[Int]
+
+    if(percent > lastProgress) {
+      println(percent)
+      lastProgress = percent
+    }
+  }
+
   private def readHeapDumpSegment(segmentLength: Long,reader : DataReader,dumpVisitor : DumpVisitor,identifierSize : Int) {
 
     val endPos = reader.position + segmentLength
     while (reader.position < endPos) {
-
+      logProgress(reader)
       val itemType = reader.readUnsignedByte
 
-      logger.debug(s"    Read heap sub-record type $itemType, at position ${reader.position}")
+      if(logger.underlying.isDebugEnabled)
+        logger.debug(s"    Read heap sub-record type $itemType, at position ${reader.position}")
 
       itemType match {
         case HPROF_GC_INSTANCE_DUMP =>
@@ -235,7 +244,7 @@ class HprofReader(fileName: String) extends Logging {
           // we can only read the fields if the dump visitor is able to supply the class field information
           // this typically comes from an earlier pass.
           val fieldSigs = dumpVisitor.getClassFieldInfo(classID)
-          val fields = fieldSigs match {
+          val fields : Option[Vector[Any]] = fieldSigs match {
             case Some(sigs : List[FieldType]) => Some(readInstanceFieldsFields(sigs,dataReader))
             case None => None
           }
