@@ -1,13 +1,17 @@
 package org.shelmet.heap.server
 
 import org.shelmet.heap.model.{JavaHeapObject, Snapshot, JavaClass}
+import org.eclipse.mat.snapshot.ISnapshot
+import org.eclipse.mat.snapshot.model.IClass
+import org.shelmet.heap.HeapId
 
-class InstancesPage(snapshot : Snapshot,query : String,includeSubclasses: Boolean) extends AbstractPage(snapshot) {
+class InstancesPage(oldSnapshot : Snapshot,snapshot : ISnapshot,query : String,includeSubclasses: Boolean) extends AbstractPage(snapshot) {
 
   override def run() {
     findObjectByQuery(query) match {
-      case Some(clazz : JavaClass) =>
+      case Some(newClazz : IClass) =>
 
+        val clazz : JavaClass = oldSnapshot.findThing(HeapId(newClazz.getObjectAddress),false).get.asInstanceOf[JavaClass]
         val title = if (includeSubclasses)
           "Instances of " + query + " (including subclasses)"
         else

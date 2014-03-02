@@ -1,11 +1,12 @@
 package org.shelmet.heap.server
 
 import org.shelmet.heap.model.Snapshot
+import org.eclipse.mat.snapshot.ISnapshot
 
 /**
  * Query to show the StackTrace for a given root
  */
-class RootStackPage(snapshot : Snapshot,query : String) extends AbstractPage(snapshot) {
+class RootStackPage(snapshot : Snapshot,newSnapshot : ISnapshot,query : String) extends AbstractPage(newSnapshot) {
   override def run() {
     val index = parseHex(query).asInstanceOf[Int]
     if(index < 0 || index >= snapshot.noRoots) {

@@ -1,0 +1,239 @@
+/*******************************************************************************
+ * Copyright (c) 2008, 2009 SAP AG.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *
+ * Contributors:
+ *    SAP AG - initial API and implementation
+ *******************************************************************************/
+package org.eclipse.mat.snapshot;
+
+import org.eclipse.mat.snapshot.model.IClass;
+import org.eclipse.mat.util.MessageUtil;
+
+import java.util.regex.Pattern;
+
+/**
+ * Factory for often-used OQL queries.
+ */
+public final class OQL {
+
+    /**
+     * Select object by its address.
+     */
+    public static final String forAddress(long address) {
+        return "SELECT * FROM OBJECTS 0x" + Long.toHexString(address);
+    }
+
+    /**
+     * Select object by its object id.
+     */
+    public static final String forObjectId(int objectId) {
+        return "SELECT * FROM OBJECTS " + objectId;
+    }
+
+    /**
+     * Select objects by its ids.
+     */
+    public static String forObjectIds(int[] objectIds) {
+        if (objectIds.length == 0)
+            return null;
+        StringBuilder buf = new StringBuilder(512);
+        buf.append("SELECT * FROM OBJECTS ");
+
+        for (int ii = 0; ii < objectIds.length; ii++) {
+            if (ii > 0)
+                buf.append(",");
+            buf.append(objectIds[ii]);
+        }
+
+        return buf.toString();
+    }
+
+    /**
+     * Select the retained set of a given OQL query.
+     */
+    public static final String retainedBy(String oqlQuery) {
+        return "SELECT AS RETAINED SET * FROM OBJECTS (" + oqlQuery + ")";
+    }
+
+    /**
+     * Select the retained set of a given object.
+     */
+    public static String retainedBy(int objectId) {
+        return "SELECT AS RETAINED SET * FROM OBJECTS " + objectId;
+    }
+
+    /**
+     * All objects of a given class.
+     */
+    public static final String forObjectsOfClass(IClass clasz) {
+        return "SELECT * FROM " + clasz.getName();
+    }
+
+    /**
+     * All objects of a class identified by its id.
+     */
+    public static final String forObjectsOfClass(int classId) {
+        return "SELECT * FROM " + classId;
+    }
+
+    private static CharSequence lastId(CharSequence query) {
+        int end = query.length();
+        int j = end - 1;
+        while (j >= 0 && Character.isJavaIdentifierPart(query.charAt(j))) --j;
+        if (j < end - 1 && Character.isJavaIdentifierStart(query.charAt(j + 1))) {
+            if (isSpace(query, j))
+                return query.subSequence(j, query.length());
+        }
+        return "";
+    }
+
+    private static CharSequence matchObjs(CharSequence s, int e) {
+        int i = e - 1;
+        while (isSpace(s, i))
+            --i;
+        if (!isDigit(s, i))
+            return "";
+        for (; ; ) {
+            if (!isDigit(s, i))
+                return s.subSequence(i + 1, e);
+            while (isDigit(s, i))
+                --i;
+            while (isSpace(s, i))
+                --i;
+            if (i < 0 || s.charAt(i) != ',')
+                return s.subSequence(i + 1, e);
+            --i;
+            while (isSpace(s, i))
+                --i;
+        }
+    }
+
+    private static boolean isDigit(CharSequence s, int i) {
+        char c;
+        return i >= 0 && i < s.length() && (c = s.charAt(i)) >= '0' && c <= '9';
+    }
+
+    private static boolean isSpace(CharSequence s, int i) {
+        char c;
+        return i >= 0 && i < s.length() &&
+                ((c = s.charAt(i)) == ' ' ||
+                        c == '\t' || c == '\n' || c == '\r' || c == '\f');
+    }
+
+    /**
+     * Create a OQL union statement and append it to the query.
+     * Possibly optimize a common prefix.
+     * select s.a,s.b,s.c from 1,173 s
+     * select s.a,s.b,s.c from 123 s
+     * combine to
+     * select s.a,s.b,s.c from 1,173,123 s
+     */
+    public static void union(StringBuilder query, String other) {
+        if ((query.length() > 0)) {
+
+            CharSequence id1 = lastId(query.toString());
+            CharSequence id2 = lastId(other);
+            if (id1.equals(id2)) {
+                CharSequence num1 = matchObjs(query, query.length() - id1.length());
+                CharSequence num2 = matchObjs(other, other.length() - id2.length());
+                int s1 = query.length() - id1.length() - num1.length();
+                int s2 = other.length() - id2.length() - num2.length();
+                if (num1.length() > 0 && num2.length() > 0 &&
+                        query.subSequence(0, s1).equals(
+                                other.subSequence(0, s2))) {
+                    int j = 0;
+                    while (isSpace(num2, j)) ++j;
+                    query.insert(s1 + num1.length(), "," + num2.subSequence(j, num2.length()));
+                    return;
+                }
+            }
+            // Default
+            query.append(" UNION (").append(other).append(")");
+        } else
+            query.append(other);
+    }
+
+    /**
+     * Return all instances of classes matching a given regular expression.
+     */
+    public static String instancesByPattern(Pattern pattern, boolean includeSubclasses) {
+        StringBuilder buf = new StringBuilder(256);
+        buf.append("SELECT * FROM \"");
+        if (includeSubclasses)
+            buf.append(" INSTANCEOF");
+        buf.append(pattern.pattern());
+        buf.append("\"");
+
+        return buf.toString();
+    }
+
+    /**
+     * Returns all classes matching a given regular expression.
+     */
+    public static String classesByPattern(Pattern pattern, boolean includeSubclasses) {
+        StringBuilder buf = new StringBuilder(256);
+        buf.append("SELECT * FROM OBJECTS \"");
+        if (includeSubclasses)
+            buf.append(" INSTANCEOF");
+        buf.append(pattern.pattern());
+        buf.append("\"");
+
+        return buf.toString();
+    }
+
+    private static final String OQL_classesByClassLoaderId = "SELECT * FROM java.lang.Class c WHERE c implements "
+            + IClass.class.getName() + " and c.@classLoaderId = {0, number, 0}";
+
+    /**
+     * Returns an OQL query string to select all objects loaded by the given
+     * class loader.
+     * <p/>
+     * <pre>
+     *       select *
+     *       from
+     *       (
+     *            select *
+     *            from java.lang.Class c
+     *            where
+     *                c implements org.eclipse.mat.snapshot.model.IClass
+     *                and c.@classLoaderId = {0}
+     *       )
+     * </pre>
+     *
+     * @param classLoaderId the object id of the class loader
+     * @return an OQL query selecting all objects loaded by the class loader
+     */
+    public static String instancesByClassLoaderId(int classLoaderId) {
+        StringBuilder buf = new StringBuilder(256);
+        buf.append("SELECT * FROM (");
+        buf.append(classesByClassLoaderId(classLoaderId));
+        buf.append(")");
+        return buf.toString();
+    }
+
+    /**
+     * Returns an OQL query string to select all classes loaded by the given
+     * class loader.
+     * <p/>
+     * <pre>
+     *       select *
+     *       from java.lang.Class c
+     *       where
+     *            c implements org.eclipse.mat.snapshot.model.IClass
+     *            and c.@classLoaderId = {0}
+     * </pre>
+     *
+     * @param classLoaderId the object id of the class loader
+     * @return an OQL query selecting all classes loaded by the class loader
+     */
+    public static String classesByClassLoaderId(int classLoaderId) {
+        return MessageUtil.format(OQL_classesByClassLoaderId, new Object[]{classLoaderId});
+    }
+
+    private OQL() {
+    }
+}

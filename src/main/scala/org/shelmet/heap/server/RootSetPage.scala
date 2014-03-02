@@ -2,12 +2,21 @@ package org.shelmet.heap.server
 
 import org.shelmet.heap.model.Snapshot
 import org.shelmet.heap.util.SortUtil
+import org.eclipse.mat.snapshot.ISnapshot
 
-class RootSetPage(snapshot : Snapshot) extends AbstractPage(snapshot) {
+class RootSetPage(oldSnapshot : Snapshot,snapshot : ISnapshot) extends AbstractPage(snapshot) {
   override def run() {
     html("All Members of the Rootset") {
+//      import scala.collection.JavaConversions._
+//      val x = snapshot.getGCRoots.flatMap { rOid =>
+//        val obj = snapshot.getObject(rOid)
+//        snapshot.getObject(rOid).getGCRootInfo.map { ri =>
+//          snapshot.getThreadStack()
+//          (obj,ri)
+//        }
+//      }
       // group by returns an unsorted map so sort it
-      snapshot.roots.values.toList.groupBy(_.rootType).toList.sortBy(_._1.sortOrder) foreach {
+      oldSnapshot.roots.values.toList.groupBy(_.rootType).toList.sortBy(_._1.sortOrder) foreach {
         case (rootType, unsortedGroupRoots) =>
           h2 {
             printEncoded(rootType.name + " References")
@@ -29,7 +38,7 @@ class RootSetPage(snapshot : Snapshot) extends AbstractPage(snapshot) {
                 out.print(")</small>")
               }
               out.print(" :<br/>")
-              snapshot.findHeapObject(root.valueHeapId) foreach { o =>
+              oldSnapshot.findHeapObject(root.valueHeapId) foreach { o =>
                 out.println("""<i class="icon-arrow-right"></i>""")
                 printThing(o)
                 out.println("<br/>")

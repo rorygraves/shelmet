@@ -1,9 +1,10 @@
 package org.shelmet.heap.server
 
-import org.shelmet.heap.model.{JavaClass, Snapshot}
 import org.shelmet.heap.util.Misc
+import org.eclipse.mat.snapshot.ISnapshot
+import org.eclipse.mat.snapshot.model.IClass
 
-class AllClassesPage(snapshot : Snapshot,excludePlatform: Boolean) extends AbstractPage(snapshot) {
+class AllClassesPage(snapshot : ISnapshot,excludePlatform: Boolean) extends AbstractPage(snapshot) {
 
   override def run() {
     val title = if(excludePlatform)
@@ -11,18 +12,19 @@ class AllClassesPage(snapshot : Snapshot,excludePlatform: Boolean) extends Abstr
     else
       "All Classes (including platform)"
 
+    import scala.collection.JavaConversions._
     html(title) {
       val classes = if(excludePlatform)
         snapshot.getClasses.filterNot(_.isPlatformClass)
       else
-        snapshot.getClasses
+        snapshot.getClasses.toList
 
       val classesByPackage = classes.groupBy(_.getPackage).toList.sortBy(_._1)
       classesByPackage foreach { case (pkg,pkgClasses) =>
         h2(s"Package ${Misc.encodeHtml(pkg)}")
-        ul[JavaClass](pkgClasses,{ clazz =>
+        ul[IClass](pkgClasses,{ clazz =>
           printClass(clazz)
-          out.print(" [" + clazz.getIdString + "]")
+          out.print(" [" + Misc.toHex(clazz.getObjectAddress) + "]")
         })
       }
     }

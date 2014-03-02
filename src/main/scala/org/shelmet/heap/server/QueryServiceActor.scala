@@ -7,8 +7,9 @@ import MediaTypes._
 import org.shelmet.heap.model.Snapshot
 import java.io.{OutputStreamWriter, PrintWriter, ByteArrayOutputStream}
 import akka.event.LoggingAdapter
+import org.eclipse.mat.snapshot.ISnapshot
 
-class QueryServiceActor(val snapshot: Snapshot) extends Actor with QueryService with ActorLogging {
+class QueryServiceActor(val oldSnapshot: Snapshot,val snapshot : ISnapshot) extends Actor with QueryService with ActorLogging {
 
   def actorRefFactory = context
   def receive = runRoute(queryRoute)
@@ -18,7 +19,8 @@ class QueryServiceActor(val snapshot: Snapshot) extends Actor with QueryService 
 trait QueryService extends HttpService {
 
   val log : LoggingAdapter
-  val snapshot: Snapshot
+  val oldSnapshot: Snapshot
+  val snapshot: ISnapshot
 
   val queryRoute = {
     respondWithMediaType(`text/html`) {
@@ -26,19 +28,19 @@ trait QueryService extends HttpService {
       detach() {
         get {
           path("") {
-            complete(runQuery(new HomepagePage(snapshot)))
+            complete(runQuery(new HomepagePage(oldSnapshot,snapshot)))
           } ~
           path("about") {
             complete(runQuery(new AboutPage(snapshot)))
           } ~
-          path("allClassesWithoutPlatform") {
+          path("allClassesWithoutPlatform" /) {
             complete(runQuery(new AllClassesPage(snapshot,true)))
           } ~
-          path("allClassesWithPlatform") {
+          path("allClassesWithPlatform" / ) {
             complete(runQuery(new AllClassesPage(snapshot,false)))
           } ~
           path("rootSet") {
-            complete(runQuery(new RootSetPage(snapshot)))
+            complete(runQuery(new RootSetPage(oldSnapshot,snapshot)))
           } ~
           path("showInstanceCountsIncPlatform") {
               complete(runQuery(new InstancesCountPage(snapshot,false)))
@@ -47,25 +49,22 @@ trait QueryService extends HttpService {
               complete(runQuery(new InstancesCountPage(snapshot,true)))
           } ~
           path("instances" / Segment) { param =>
-            complete(runQuery(new InstancesPage(snapshot,param,false)))
+            complete(runQuery(new InstancesPage(oldSnapshot,snapshot,param,false)))
           } ~
           path("allInstances" / Segment) { param =>
-            complete(runQuery(new InstancesPage(snapshot,param,true)))
+            complete(runQuery(new InstancesPage(oldSnapshot,snapshot,param,true)))
           } ~
           path("object" / Segment) { param =>
-            complete(runQuery(new ObjectPage(snapshot,param)))
+            complete(runQuery(new ObjectPage(oldSnapshot,snapshot,param)))
           } ~
           path("objectRootsExcWeak" / Segment) { objectRefParam =>
-            complete(runQuery(new ObjectRootsPage(snapshot,objectRefParam,false)))
+            complete(runQuery(new ObjectRootsPage(oldSnapshot,snapshot,objectRefParam,false)))
           } ~
           path("objectRootsIncWeak" / Segment) { objectRefParam =>
-            complete(runQuery(new ObjectRootsPage(snapshot,objectRefParam,true)))
-          } ~
-          path("reachableFrom" / Segment) { param =>
-            complete(runQuery(new ReachablePage(snapshot,param)))
+            complete(runQuery(new ObjectRootsPage(oldSnapshot,snapshot,objectRefParam,true)))
           } ~
           path("rootStack" / Segment) { param =>
-            complete(runQuery(new RootStackPage(snapshot,param)))
+            complete(runQuery(new RootStackPage(oldSnapshot,snapshot,param)))
           } ~
           path("histogram" / Segment) { param =>
               complete(runQuery(new HistogramPage(snapshot,param)))
@@ -74,13 +73,13 @@ trait QueryService extends HttpService {
             complete(runQuery(new HistogramPage(snapshot,"")))
           } ~
           path("refsByType" / Segment) { param =>
-            complete(runQuery(new RefsByTypePage(snapshot,param)))
+            complete(runQuery(new RefsByTypePage(oldSnapshot,snapshot,param)))
           } ~
           path("finalizerSummary") {
-            complete(runQuery(new FinalizerSummaryPage(snapshot)))
+            complete(runQuery(new FinalizerSummaryPage(oldSnapshot,snapshot)))
           } ~
           path("finalizerObjects") {
-            complete(runQuery(new FinalizerObjectsPage(snapshot)))
+            complete(runQuery(new FinalizerObjectsPage(oldSnapshot,snapshot)))
           } ~
           path("favicon.ico") {
             complete(StatusCodes.NotFound)
@@ -102,7 +101,7 @@ trait QueryService extends HttpService {
     val pw = new PrintWriter(new OutputStreamWriter(baos))
     query.setOutput(pw)
     val qs = System.currentTimeMillis()
-    Snapshot.setInstance(snapshot)
+    Snapshot.setInstance(oldSnapshot)
     query.run()
     Snapshot.clearInstance()
     val qe = System.currentTimeMillis()

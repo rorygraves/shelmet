@@ -1,6 +1,7 @@
 package org.shelmet.heap.server
 
 import org.shelmet.heap.model.{Snapshot, JavaClass, JavaHeapObject}
+import org.eclipse.mat.snapshot.ISnapshot
 
 object FinalizerSummaryPage {
 
@@ -15,7 +16,7 @@ object FinalizerSummaryPage {
   }
 }
 
-class FinalizerSummaryPage(snapshot : Snapshot) extends AbstractPage(snapshot) {
+class FinalizerSummaryPage(snapshot : Snapshot,newSnapshot : ISnapshot) extends AbstractPage(newSnapshot) {
   import FinalizerSummaryPage.HistogramElement
 
   override def run() {

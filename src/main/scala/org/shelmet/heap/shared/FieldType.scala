@@ -27,12 +27,12 @@ sealed trait BaseFieldType extends FieldType {
 case object BooleanFieldType extends BaseFieldType {
   def jvmTypeChar = 'Z'
   def typeName = "boolean"
-  def fieldSize = 4
+  def fieldSize = 1
 }
 case object ByteFieldType extends BaseFieldType {
   def jvmTypeChar = 'B'
   def typeName = "byte"
-  def fieldSize = 2
+  def fieldSize = 1
 }
 case object ShortFieldType extends BaseFieldType {
   def jvmTypeChar = 'S'
@@ -47,7 +47,7 @@ case object CharFieldType extends BaseFieldType {
 case object IntFieldType extends BaseFieldType {
   def jvmTypeChar = 'I'
   def typeName = "int"
-  def fieldSize = 8
+  def fieldSize = 4
 }
 case object LongFieldType extends BaseFieldType {
   def jvmTypeChar = 'J'

@@ -9,7 +9,6 @@ import org.shelmet.heap.HeapId
 import com.typesafe.scalalogging.slf4j.Logging
 import java.util.Date
 import org.shelmet.heap.shared.BaseFieldType
-import java.io.{PrintStream, FileOutputStream}
 
 /**
  * Represents a snapshot of the Java objects in the VM at one instant.
@@ -35,42 +34,11 @@ object Snapshot extends Logging {
     logger.info("Parse step complete")
     logger.info("Snapshot read, resolving...")
     snapshot.resolve(calculateRefs)
-    logger.info("Calculating tree depths.")
-    snapshot.calculateDepths()
 
-    logger.info("Calculating retained sizes. (may take a while)")
-    snapshot.calculateRetainedSizes()
     logger.info("Snapshot load complete.")
     Snapshot.clearInstance()
-//    calcAverageStoredSize(snapshot.allObjects)
     snapshot
   }
-
-//  def calcAverageStoredSize(objs : Iterable[JavaHeapObject]) {
-//    var totalSize = 0L
-//    var count = 0L
-//    var smallest  = Integer.MAX_VALUE
-//    var largest = Integer.MIN_VALUE
-//
-//    objs.foreach { obj =>
-//      val baos = new ByteArrayOutputStream()
-//      val oos = new ObjectOutputStream(new GZIPOutputStream(baos))
-//      oos.writeObject(obj)
-//      oos.close()
-//      val objSize = baos.toByteArray.size
-//      if(objSize < smallest)
-//        smallest = objSize
-//
-//      if(objSize > largest)
-//        largest = objSize
-//      totalSize += objSize
-//      count += 1
-//    }
-//
-//    val avgSize = totalSize /count
-//    println(s"count = $count, avgSize = $avgSize")
-//    println(s"largest = $largest, smallest = $smallest")
-//  }
 
   private val instanceHolder = new ThreadLocal[Snapshot]
   def instance : Snapshot = Option(instanceHolder.get()).getOrElse(throw new IllegalStateException("Instance not set for query"))
@@ -96,115 +64,6 @@ class Snapshot extends Logging {
   var identifierSize: Int = 8
   private var minimumObjectSize: Int = 0
   var creationDate : Option[Date] = None
-
-
-  def dumpGraph() {
-
-    val idx = heapObjects.values.map(_.heapId).zipWithIndex.toMap
-    val refs = heapObjects.values.flatMap { obj =>
-      obj.hardRefersSet.toList.map( (_,obj.heapId))
-    }
-
-    val ps = new PrintStream(new FileOutputStream("/tmp/test.txt"))
-    ps.println(refs.map { case (a,b) => s"${idx(a)}->${idx(b)}" }.mkString(","))
-    ps.close()
-  }
-
-  // TODO Need up update basic size calculations see:
-  //    http://www.javamex.com/tutorials/memory/object_memory_usage.shtml
-  //    http://www.javamex.com/tutorials/memory/array_memory_usage.shtml
-
-  def calculateRetainedSizes() {
-    dumpGraph()
-     val startTime = System.currentTimeMillis()
-    var idx = 0
-    var secondaryCount = 0
-
-    var lastPercent = 0
-    val total = heapObjects.size
-    def incCount() {
-      idx += 1
-      val percent = (idx.toDouble / total * 100).floor.toInt
-      if(percent > lastPercent) {
-        lastPercent = percent
-        if(percent % 10 == 0)
-          print(percent)
-        else
-          print(".")
-      }
-    }
-
-
-    // sorting furthest from root to nearest speeds up calculation due to reuse of graphs
-    heapObjects.values.toList.sortWith{
-      case (a,b) =>
-        val diff1 = b.minDepthToRoot - a.minDepthToRoot
-        if(diff1 != 0)
-          diff1 < 0
-        else
-          (b.maxDepthToRoot - a.maxDepthToRoot) > 0
-    } foreach { obj =>
-      if(!obj.retainedCalculated) {
-        incCount()
-        val size = obj.size
-        val newRefs = rootsetReferencesTo(obj, includeWeak = false)
-        if(!newRefs.isEmpty) {
-          val retainingSet = (newRefs.map(_.objectSet).reduce(_.intersect(_))-obj.heapId).map(_.get)
-
-          retainingSet.foreach( _.retaining += size )
-
-          // try and use the graph for stuff closer to the root
-          obj.retainedCalculated = true
-          var targetObj = obj
-          var targetRetained = retainingSet
-          while(targetObj.referers.size == 1 && !targetObj.referers.head.retainedCalculated) {
-            targetObj = targetObj.referers.head
-            val targetSize = targetObj.size
-            targetRetained -= targetObj
-            incCount()
-            secondaryCount += 1
-            targetRetained.foreach( _.retaining += targetSize )
-            targetObj.retainedCalculated = true
-          }
-        }
-      }
-    }
-    val endTime = System.currentTimeMillis()
-    println()
-    println(s"Calculating retained size took ${endTime-startTime}ms")
-
-  }
-
-  def calculateDepths() {
-
-    var visited = Set[HeapId]()
-
-    var depth = 1
-    var toVisit = Set[HeapId]()
-    rootsMap.foreach { case (heapId,v) =>
-      heapId.get.addDepth(depth)
-      toVisit += heapId
-    }
-
-    while(toVisit.size > 0) {
-      depth += 1
-      var nextToVisit = Set[HeapId]()
-      toVisit.foreach { hId =>
-        visited += hId
-        hId.getOpt.foreach { obj =>
-          obj.visitReferencedObjects({ r =>
-            r.addDepth(depth)
-            if(!visited.contains(r.heapId)) {
-              nextToVisit += r.heapId
-            }
-          },false)
-        }
-      }
-      toVisit = nextToVisit
-    }
-
-
-  }
 
   def setSiteTrace(obj: JavaHeapObject, trace: Option[StackTrace]) {
     trace match {
@@ -263,11 +122,6 @@ class Snapshot extends Logging {
     // resolve non-class objects
     for (t <- heapObjects.values if !t.isInstanceOf[JavaClass])
         t.resolve(this)
-
-    // TODO Determine if we actually want to do this - it hugely alters the counts of java.lang.Object
-//    // resolve unknown heap objects
-//    for (t <- heapObjects.values if t.isInstanceOf[UnknownHeapObject])
-//      t.resolve(this)
 
     weakReferenceClass = findClassByName("java.lang.ref.Reference").getOrElse(throw new IllegalStateException("No java.lang.ref.Reference"))
     referentFieldIndex = weakReferenceClass.getFieldsForInstance.indexWhere(_.name == "referent")

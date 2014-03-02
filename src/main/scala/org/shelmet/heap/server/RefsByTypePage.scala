@@ -1,15 +1,19 @@
 package org.shelmet.heap.server
 
-import org.shelmet.heap.model.{JavaHeapObject, Snapshot, JavaClass}
+import org.shelmet.heap.model.{Snapshot, JavaClass}
 import scala.collection._
+import org.eclipse.mat.snapshot.ISnapshot
+import org.eclipse.mat.snapshot.model.{IObject, IClass}
+import org.shelmet.heap.HeapId
 
 /**
  * References by type summary
  */
-class RefsByTypePage(snapshot : Snapshot,query : String) extends AbstractPage(snapshot) {
+class RefsByTypePage(snapshot : Snapshot,newSnaphsot : ISnapshot,query : String) extends AbstractPage(newSnaphsot) {
   override def run() {
     findObjectByQuery(query) match {
-      case Some(clazz : JavaClass) =>
+      case Some(newClazz : IClass) =>
+        val clazz = snapshot.findHeapObject(HeapId(newClazz.getObjectAddress)).get.asInstanceOf[JavaClass]
         val referrersStat = mutable.Map[JavaClass,Long]()
         val refereesStat = mutable.Map[JavaClass,Long]()
 
@@ -40,7 +44,7 @@ class RefsByTypePage(snapshot : Snapshot,query : String) extends AbstractPage(sn
             print(refereesStat)
           }
         }
-      case Some(_ : JavaHeapObject) =>
+      case Some(_ : IObject) =>
         val text = query + " is not a class object"
         html("References by Type") {
           out.println(text)

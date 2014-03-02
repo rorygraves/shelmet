@@ -1,9 +1,12 @@
 package org.shelmet.heap.server
 
 import org.shelmet.heap.model._
-import org.shelmet.heap.util.{SortUtil, Misc}
+import org.shelmet.heap.util.SortUtil
+import org.eclipse.mat.snapshot.ISnapshot
+import org.eclipse.mat.snapshot.model._
+import org.shelmet.heap.HeapId
 
-class ObjectPage(snapshot : Snapshot,query : String) extends AbstractPage(snapshot) {
+class ObjectPage(oldSnapshot : Snapshot,newSnapshot : ISnapshot,query : String) extends AbstractPage(newSnapshot) {
 
   override def run() {
     findObjectByQuery(query) match {
@@ -11,60 +14,52 @@ class ObjectPage(snapshot : Snapshot,query : String) extends AbstractPage(snapsh
         html("Missing object " + query) {
           out.println("object not found")
         }
-      case Some(jObject : JavaObject) =>
-        renderInstance(jObject)
-      case Some(clazz : JavaClass) =>
+      case Some(clazz : IClass) =>
         renderClass(clazz)
-      case Some(array : JavaValueArray) =>
-        refactorValueArray(array)
-      case Some(objArray : JavaObjectArray) =>
+      case Some(jObject : IInstance) =>
+        renderInstance(jObject)
+      case Some(array : IPrimitiveArray) =>
+        renderValueArray(array)
+      case Some(objArray : IObjectArray) =>
         renderObjectArray(objArray)
-      case Some(unknown : UnknownHeapObject) =>
-        renderUnknownHeapObject(unknown)
       case x =>
         throw new IllegalStateException("Unknown heap type " + x)
     }
   }
 
-  def renderUnknownHeapObject(unknown : UnknownHeapObject) {
-    html(s"Unknown Heap Object (${unknown.heapId.toHex})") {
-      basicObjectRender(unknown) {
-        // no extra rows
-      } {
-        // no body content
-      }
-    }
-  }
+  def renderClass(clazz : IClass) {
 
-  def renderClass(clazz : JavaClass) {
-    val name = s"class ${clazz.displayName} (${clazz.heapId.toHex})"
+    val oldClazz = oldSnapshot.findHeapObject(HeapId(clazz.getObjectAddress)).get.asInstanceOf[JavaClass]
+
+    val name = s"class ${clazz.getDisplayName} (${clazz.getObjectAddress.toHexString})"
     html(name) {
 
-      val subClasses = clazz.getSubclasses
+      import scala.collection.JavaConversions._
+      val subClasses = clazz.getAllSubclasses.toList
       val subclassCount = subClasses.size
 
-      val instanceFields = clazz.fields.sortWith((jf1,jf2) => jf1.name.compareTo(jf2.name) < 0)
+      val instanceFields = clazz.getFieldDescriptors.sortWith((jf1,jf2) => jf1.getName.compareTo(jf2.getName) < 0)
       val instanceFieldsCount = instanceFields.size
 
-      val staticFields = clazz.getStatics
+      val staticFields = oldClazz.getStatics
       val staticFieldsCount = staticFields.size
 
       basicObjectRender(clazz) {
         tableRow {
           tableData { out.println("<b>Superclass:</b>") }
-          tableData { printClass(clazz.getSuperclass.getOrElse(null)) }
+          tableData { printClass(clazz.getSuperClass) }
         }
         tableRow {
           tableData { out.println("<b>ClassLoader:</b>") }
-          tableData { printThing(clazz.loader.getOrElse(null)) }
+          tableData { printThing(oldClazz.loader.getOrElse(null)) }
         }
         tableRow {
           tableData { out.println("<b>Signers:</b>") }
-          tableData { printThing(clazz. getSigners.getOrElse(null)) }
+          tableData { printThing(oldClazz.getSigners.getOrElse(null)) }
         }
         tableRow {
           tableData { out.println("<b>Protection Domain:</b>") }
-          tableData { printThing(clazz.getProtectionDomain.getOrElse(null)) }
+          tableData { printThing(oldClazz.getProtectionDomain.getOrElse(null)) }
         }
         tableRow {
           tableData { out.println("<b>Subclasses</b>") }
@@ -96,7 +91,7 @@ class ObjectPage(snapshot : Snapshot,query : String) extends AbstractPage(snapsh
         if(subclassCount > 0) {
           pageAnchor("subclasses")
           h2("Subclasses:")
-          ul(subClasses,printClass)
+          ul[IClass](subClasses,printClass)
         }
 
         if(instanceFieldsCount > 0) {
@@ -125,17 +120,15 @@ class ObjectPage(snapshot : Snapshot,query : String) extends AbstractPage(snapsh
                 }
             }
           }
-//
-//          ul(,printStatic)
         }
 
-        val instanceCountWithSub = clazz.getInstancesCount(includeSubclasses = true)
+        val instanceCountWithSub = oldClazz.getInstancesCount(includeSubclasses = true)
         h2(s"Instances ($instanceCountWithSub)")
         if(instanceCountWithSub != 0) {
           if(subClasses.isEmpty)
-            printAnchor(s"instances/${encodeForURL(clazz)}",s"of this class (${clazz.getInstancesCount(includeSubclasses = false)})")
+            printAnchor(s"instances/${encodeForURL(clazz)}",s"of this class (${oldClazz.getInstancesCount(includeSubclasses = false)})")
           else {
-            printAnchor(s"instances/${encodeForURL(clazz)}",s"of this class (${clazz.getInstancesCount(includeSubclasses = false)})")
+            printAnchor(s"instances/${encodeForURL(clazz)}",s"of this class (${oldClazz.getInstancesCount(includeSubclasses = false)})")
             out.println("<br/>")
             printAnchor("allInstances/" + encodeForURL(clazz),s"of this class with subclasses ($instanceCountWithSub)")
           }
@@ -147,29 +140,25 @@ class ObjectPage(snapshot : Snapshot,query : String) extends AbstractPage(snapsh
     }
   }
 
-  def renderInstance(obj : JavaObject) {
-    html(s"instance of ${obj.getClazz.name} #${obj.objIdent.get.id}") {
+  def renderInstance(obj : IInstance) {
+    val oldObj = oldSnapshot.findHeapObject(HeapId(obj.getObjectAddress)).get.asInstanceOf[JavaObject]
+    html(s"instance of ${obj.getClazz.getName} #${obj.getObjectId}") {
 
       basicObjectRender(obj) {
         // no extra table rows
       } {
       // special string handling
         obj match {
-          case jso : JavaObject if jso.getClazz.isString =>
-
-            val value: Any = jso.getField("value")
-            val valStr = " " + Misc.encodeHtml(value match {
-              case array: JavaValueArray => array.valueString()
-              case _ => "null"
-            })
-
+          case si : IInstance if si.getClazz.getName == "java.lang.String" =>
+            val bytesObjectRef = si.getField("value").getValue.asInstanceOf[ObjectReference]
+            val strValue = new String(bytesObjectRef.getObject.asInstanceOf[IPrimitiveArray].valueString(true))
             h2("Value:")
-            out.println(valStr)
+            out.println(strValue)
           case _ =>
         }
 
         h2("Instance Fields:")
-        val fieldsAndValues = obj.getFieldsAndValues
+        val fieldsAndValues = oldObj.getFieldsAndValues
 
         val set = fieldsAndValues.sortWith {
           case ((lhsField,lhsThing),(rhsField,rhsThing)) =>
@@ -194,21 +183,21 @@ class ObjectPage(snapshot : Snapshot,query : String) extends AbstractPage(snapsh
     }
   }
 
-  def refactorValueArray(array : JavaValueArray) {
+  def renderValueArray(array : IPrimitiveArray) {
     html(s"value array: ${array.toString}") {
 
       basicObjectRender(array) {
         // no rows
       } {
-        printEncoded(array.valueString(bigLimit = true))
+        printEncoded(array.valueString(true))
       }
     }
   }
 
-  def renderObjectArray(objArray : JavaObjectArray) {
+  def renderObjectArray(objArray : IObjectArray) {
+
     html(s"object array: ${objArray.toString}") {
-      val elements = objArray.elements.zipWithIndex
-      out.println("<h1>Array of " + elements.size + " objects</h1>")
+      out.println(s"<h1>Array of ${objArray.getLength} objects</h1>")
 
       basicObjectRender(objArray) {
 //        tableRow {
@@ -218,9 +207,15 @@ class ObjectPage(snapshot : Snapshot,query : String) extends AbstractPage(snapsh
         // TODO Add ELEMENT Class
       } {
         h2("Values")
-        elements foreach { case (item,idx) =>
+        val entries = objArray.getReferenceArray.zipWithIndex
+        entries foreach { case (itemRef,idx) =>
           out.print("" + idx + " : ")
-          printThing(item)
+          if(itemRef == 0)
+            print("<null>")
+          else {
+            val id = newSnapshot.mapAddressToId(itemRef)
+            printThing(newSnapshot.getObject(id))
+          }
           out.println("<br/>")
         }
       }
@@ -233,12 +228,15 @@ class ObjectPage(snapshot : Snapshot,query : String) extends AbstractPage(snapsh
    * @param tableContent Rendering any extra table rows
    * @param bodyContent Any body content to render
    */
-  def basicObjectRender(obj : JavaHeapObject)( tableContent : => Unit )( bodyContent : => Unit )  {
+  def basicObjectRender(obj : IObject)( tableContent : => Unit )( bodyContent : => Unit )  {
 
-    val rootRefs: Set[Root] = obj.getRootReferences
+
+    val oldObj = oldSnapshot.findHeapObject(HeapId(obj.getObjectAddress)).get
+
+    val rootRefs = newSnapshot.getGCRootInfo(obj.getObjectId).toList
     val rootRefCounts = rootRefs.size
 
-    val refers = obj.referers.toList.sortWith(SortUtil.sortByFn[JavaHeapObject](
+    val refers = oldObj.referers.toList.sortWith(SortUtil.sortByFn[JavaHeapObject](
       (a,b) => a.getClazz.compareTo(b.getClazz),
       (a,b) => {
         val aVal = a.objIdent.map(_.id).getOrElse(Int.MinValue)
@@ -248,37 +246,26 @@ class ObjectPage(snapshot : Snapshot,query : String) extends AbstractPage(snapsh
       (a, b) => a.toString.compareTo(b.toString)
     ))
 
-
     val refersCount = refers.size
-
 
     table {
       tableRow {
         tableData(out.println("<b>Instance of:</b>"))
         tableData(printClass(obj.getClazz))
       }
+
       tableRow {
         tableData(out.println("<b>Size</b>"))
-        tableData(out.println(s"${obj.size} bytes"))
+        tableData(out.println(s"${obj.getUsedHeapSize} bytes"))
       }
 
       tableRow {
         tableData(out.println("<b>Retained Size</b>"))
-        tableData(out.println(s"${obj.retainedSize} bytes"))
+        tableData(out.println(s"${obj.getRetainedHeapSize} bytes"))
       }
 
       tableContent
 
-      tableRow {
-        tableData(out.println("<b>Min/max distance to root</b>"))
-        tableData(out.println(s"""${obj.minDepthToRoot}/${obj.maxDepthToRoot}"""))
-      }
-
-//      tableRow {
-//        tableData(out.println("<b>Dominator</b>"))
-//        tableData(out.println(s"""${obj.dominator}"""))
-//      }
-//
       tableRow {
         tableData { out.println("<b>References to this object</b>") }
         tableData {
@@ -302,21 +289,20 @@ class ObjectPage(snapshot : Snapshot,query : String) extends AbstractPage(snapsh
     bodyContent
 
     // general footer
-    outputRootRefs(obj)
+    outputRootRefs(rootRefs)
 
     h2("References to this object:")
     pageAnchor("refers")
     refers.foreach {
       ref =>
         printThing(ref)
-        printEncoded(" : " + ref.describeReferenceTo(obj).mkString("/"))
+        printEncoded(" : " + ref.describeReferenceTo(oldObj).mkString("/"))
 
-        out.println(s" (${ref.minDepthToRoot}/${ref.maxDepthToRoot})")
         out.println("<br/>")
     }
 
-    printAllocationSite(obj)
-    printReferencesTo(obj)
+    printAllocationSite(oldObj)
+    printReferencesTo(oldObj)
   }
 
   private def printAllocationSite(obj: JavaHeapObject) {
@@ -340,20 +326,17 @@ class ObjectPage(snapshot : Snapshot,query : String) extends AbstractPage(snapsh
     printAnchor(s"objectRootsIncWeak/${hexString(id)}","Include weak refs")
     out.println("</li>")
     out.println("</ul>")
-
-    printAnchor("reachableFrom/" +hexString(id),"Objects reachable from here")
     out.println("<br/>")
   }
 
-  def outputRootRefs(obj : JavaHeapObject) {
-    val rootRefs = obj.getRootReferences.toList.sortBy(_.toString)
+  def outputRootRefs(rootRefs : List[GCRootInfo]) {
     val rootRefCounts = rootRefs.size
 
     if(rootRefCounts > 0) {
       pageAnchor("rootRefs")
       h2("Root References:")
       ul(rootRefs,{
-        r : Root => out.println(r.toString)
+        r : GCRootInfo => out.println(GCRootInfo.getTypeAsString(r.getType))
       })
     }
   }

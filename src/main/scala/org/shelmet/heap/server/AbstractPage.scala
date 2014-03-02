@@ -4,8 +4,11 @@ import org.shelmet.heap.model._
 import org.shelmet.heap.util.Misc
 import java.io.PrintWriter
 import org.shelmet.heap.HeapId
+import org.eclipse.mat.snapshot.model.{FieldDescriptor, IObject, IClass}
+import org.eclipse.mat.snapshot.ISnapshot
+import org.eclipse.mat.SnapshotException
 
-abstract class AbstractPage(snapshot : Snapshot) {
+abstract class AbstractPage(snapshot : ISnapshot) {
 
   protected var out: PrintWriter = null
 
@@ -15,19 +18,25 @@ abstract class AbstractPage(snapshot : Snapshot) {
     this.out = o
   }
 
-  def findObjectByQuery(query : String) : Option[JavaHeapObject] = {
-    if (query.startsWith("0x")) {
-      val id = HeapId(Misc.parseHex(query))
-      snapshot.findThing(id,createIfMissing = false)
-    } else {
-      try {
-        val idVal = query.toLong
-        val id = HeapId(idVal)
-        snapshot.findThing(id,createIfMissing = false)
-      } catch {
-        case  nfe : NumberFormatException =>
-          snapshot.findClassByName(query)
+  def findObjectByQuery(query : String) : Option[IObject] = {
+    try {
+      if (query.startsWith("0x")) {
+        val addr = Misc.parseHex(query)
+        Some(snapshot.getObject(snapshot.mapAddressToId(addr)))
+      } else {
+        try {
+          val addr = query.toLong
+          Some(snapshot.getObject(snapshot.mapAddressToId(addr)))
+        } catch {
+          case  nfe : NumberFormatException =>
+            import scala.collection.JavaConversions._
+            snapshot.getClassesByName(query,false).headOption
+        }
       }
+
+    } catch {
+      case x : SnapshotException =>
+        None
     }
   }
 
@@ -170,8 +179,12 @@ abstract class AbstractPage(snapshot : Snapshot) {
     out.println("</a>")
   }
 
+  protected def printThingAnchorTag(addr: Long,content : String) {
+    printAnchor("object/" + hexString(addr),content)
+  }
+
   protected def printThingAnchorTag(id: HeapId,content : String) {
-    printAnchor("object/" + hexString(id.id),content)
+    printThingAnchorTag(id.id,content)
   }
 
   protected def printThing(thing: Any) {
@@ -180,6 +193,11 @@ abstract class AbstractPage(snapshot : Snapshot) {
       return
     }
     thing match {
+      case io : IObject =>
+//        val oldObj = snapshot.findHeapObject(HeapId.apply(io.getObjectAddress)).get
+        val oldObj : JavaObject  =  null
+        printThingAnchorTag(io.getObjectAddress,io.getDisplayName + " (" + io.getUsedHeapSize + " bytes)")
+
       case ho: JavaHeapObject =>
         printThingAnchorTag(ho.heapId,thing.toString + " (" + ho.size + " bytes)")
       case b : Boolean => printEncoded(b.toString)
@@ -215,20 +233,19 @@ abstract class AbstractPage(snapshot : Snapshot) {
       out.println("null")
   }
 
-  protected def encodeForURL(clazz: JavaClass): String = clazz.getIdString
-
-  protected def printField(field: JavaField) {
-    printEncoded(field.longName + " (" + field.fieldType.typeName + ")")
+  protected def printClass(clazz: IClass) {
+    if (clazz != null)
+      printAnchor("object/"+encodeForURL(clazz),clazz.getNewDisplayName)
+    else
+      out.println("null")
   }
 
-  protected def printStatic(member: JavaStatic) {
-    val f: JavaField = member.field
-    printField(f)
-    out.print(" : ")
-    if (f.isObjectField)
-      printThing(member.getValue)
-    else
-      printEncoded(member.getValue.toString)
+  protected def encodeForURL(clazz: JavaClass): String = clazz.getIdString
+
+  protected def encodeForURL(clazz: IClass): String = Misc.toHex(clazz.getObjectAddress)
+
+  protected def printField(field: FieldDescriptor) {
+    printEncoded(field.getName + " (" + field.getVerboseSignature + ")")
   }
 
   protected def printStackTrace(trace: StackTrace) {

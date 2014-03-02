@@ -1,22 +1,23 @@
 package org.shelmet.heap.server
 
-import org.shelmet.heap.model.{JavaClass, Snapshot}
 import org.shelmet.heap.util.SortUtil
 import scala.collection.SortedSet
 import scala.math.Ordering
+import org.eclipse.mat.snapshot.ISnapshot
+import org.eclipse.mat.snapshot.model.IClass
 
-class InstancesCountPage(snapshot : Snapshot,excludePlatform: Boolean) extends AbstractPage(snapshot) {
+class InstancesCountPage(snapshot : ISnapshot,excludePlatform: Boolean) extends AbstractPage(snapshot) {
 
   override def run() {
     val title = if (excludePlatform) "Instance Counts for All Classes (excluding platform)"
     else "Instance Counts for All Classes (including platform)"
 
     html(title) {
-      val sortFn = SortUtil.sortByFn[(JavaClass,Int)](
+      val sortFn = SortUtil.sortByFn[(IClass,Int,Long)](
         (l,r)=>  r._2 - l._2,
         (l,r) => {
-          val left = l._1.name
-          val right = r._1.name
+          val left = l._1.getName
+          val right = r._1.getName
           if (left.endsWith("]") != right.endsWith("]")) {
             if (left.endsWith("]"))
               1
@@ -25,17 +26,20 @@ class InstancesCountPage(snapshot : Snapshot,excludePlatform: Boolean) extends A
           } else
             0
         },
-        (l,r) => l._1.name.compareTo(r._1.name)
+        (l,r) => l._1.getName.compareTo(r._1.getName)
       )
+
+      import scala.collection.JavaConversions._
 
       // use a sorted set so we build the ordering  during traversal rather than collecting then sorting
       val classesAndCounts = {
-        val classesAndC = (if(excludePlatform)
-              snapshot.getClasses.filterNot(_.isPlatformClass)
-            else
-              snapshot.getClasses
-          ).map( c => (c,c.getInstancesCount(includeSubclasses = false)))
 
+        val classes = if(excludePlatform)
+          snapshot.getClasses.filterNot(_.isPlatformClass).toList
+        else
+          snapshot.getClasses.toList
+
+        val classesAndC = classes.map { c => (c,c.getNumberOfObjects,snapshot.getHeapSize(c.getObjectIds)) }
 
         SortedSet.empty(Ordering fromLessThan sortFn) ++ classesAndC
       }
@@ -51,7 +55,7 @@ class InstancesCountPage(snapshot : Snapshot,excludePlatform: Boolean) extends A
         printClass(clazz)
         out.println("<br/>")
         instances += count
-        totalSize += clazz.getTotalInstanceSize
+        totalSize += clazzAndCount._3
       }
       h2(s"Total of $instances instances occupying $totalSize bytes.")
     }

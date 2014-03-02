@@ -57,8 +57,6 @@ class JavaClass(snapshotV : Snapshot,
   }
 
 
-  lazy val instanceRetained : Long = getInstances(false).map(_.retainedSize).sum
-
   private var instanceRefs : Set[HeapId] = Set.empty
 
   private var subclassRefs : Set[HeapId] = Set.empty
@@ -156,18 +154,6 @@ class JavaClass(snapshotV : Snapshot,
    * @return the size of an instance of this class.  Gives 0 for an array type.
    */
   def getInstanceSize: Int = instanceSize + Snapshot.instance.getMinimumObjectSize
-
-  /**
-   * @return The size of all instances of this class.  Correctly handles arrays.
-   */
-  lazy val getTotalInstanceSize: Long = {
-    val instances = getInstances(includeSubclasses = false)
-    val count: Int = instances.size
-    if (count == 0 || !isArray)
-      count * instanceSize
-    else
-      instances.foldLeft(0L)(_ + _.size)
-  }
 
   override def size: Int = Snapshot.instance.getJavaLangClass.getInstanceSize
 

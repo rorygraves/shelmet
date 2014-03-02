@@ -1,8 +1,8 @@
 package org.shelmet.heap.server
 
-import org.shelmet.heap.model.Snapshot
+import org.eclipse.mat.snapshot.ISnapshot
 
-class AboutPage(snapshot : Snapshot) extends AbstractPage(snapshot) {
+class AboutPage(snapshot : ISnapshot) extends AbstractPage(snapshot) {
   override def run() {
     html("About SHelmet") {
       out.println(

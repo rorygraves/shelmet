@@ -4,8 +4,9 @@ import org.shelmet.heap.model._
 import org.shelmet.heap.util.SortUtil
 import org.shelmet.heap.HeapId
 import scala.Some
+import org.eclipse.mat.snapshot.ISnapshot
 
-class ObjectRootsPage(snapshot : Snapshot,query : String,includeWeak: Boolean) extends AbstractPage(snapshot) {
+class ObjectRootsPage(snapshot : Snapshot,newSnapshot : ISnapshot,query : String,includeWeak: Boolean) extends AbstractPage(newSnapshot) {
 
   override def run() {
     val id = HeapId(parseHex(query))

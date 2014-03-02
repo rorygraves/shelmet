@@ -3,8 +3,9 @@ package org.shelmet.heap.server
 import org.shelmet.heap.model.Snapshot
 import java.text.SimpleDateFormat
 import java.util.{TimeZone,Date}
+import org.eclipse.mat.snapshot.ISnapshot
 
-class HomepagePage(snapshot: Snapshot) extends AbstractPage(snapshot) {
+class HomepagePage(snapshot: Snapshot,newSnapshot : ISnapshot) extends AbstractPage(newSnapshot) {
 
   def formatDateAsUTC(date : Date) =
   {
@@ -23,41 +24,44 @@ class HomepagePage(snapshot: Snapshot) extends AbstractPage(snapshot) {
       table {
         tableRow {
           tableData("Creation time:")
-          tableData(snapshot.creationDate.map(formatDateAsUTC).getOrElse("Unknown"))
+          tableData(Option(newSnapshot.getSnapshotInfo.getCreationDate).map(formatDateAsUTC).getOrElse("Unknown"))
         }
         tableRow {
           tableData("No Objects:")
           tableData {
-            printAnchor("showInstanceCountsIncPlatform/","" + snapshot.noObjects)
+            printAnchor("showInstanceCountsIncPlatform/","" + newSnapshot.getSnapshotInfo.getNumberOfObjects)
           }
         }
         tableRow {
           tableData("Classes (including system classes):")
           tableData {
-            printAnchor("allClassesWithPlatform/","" + snapshot.noClasses)
+            printAnchor("allClassesWithPlatform/","" + newSnapshot.getSnapshotInfo.getNumberOfClasses)
           }
         }
         tableRow {
           tableData("User Classes:")
           tableData {
-            printAnchor("allClassesWithoutPlatform/","" + snapshot.noUserClasses)
+            printAnchor("allClassesWithoutPlatform/","" + snapshot.getClasses.count(!_.isPlatformClass))
           }
         }
       }
 
 
-      val top10 = snapshot.allObjects.toList.sortBy(-_.retainedSize).take(10)
-      h2("Largest 10 objects by retained size")
+      val topDominators = newSnapshot.getImmediateDominatedIds(-1)
+      val x = topDominators.map { dId => (dId,newSnapshot.getRetainedHeapSize(dId))}.sortBy( x => - x._2)
+
+      val top10 = x.take(10)
+      h2("Largest 10 objects by retained size (New)")
       table {
         tableRow {
           tableHeader("Object")
           tableHeader("Retained Size")
         }
 
-        top10 foreach { obj =>
+        top10 foreach { case (objId,size) =>
           tableRow {
-            tableData(printThing(obj))
-            tableData(s"${obj.retainedSize}")
+            tableData(printThing(newSnapshot.getObject(objId)))
+            tableData(s"$size")
           }
         }
       }

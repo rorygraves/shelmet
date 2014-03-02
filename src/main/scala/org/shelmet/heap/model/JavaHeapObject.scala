@@ -23,22 +23,6 @@ abstract class JavaHeapObject(val heapId : HeapId,val objIdent : Option[Instance
     else
       softRefersSet ++ hardRefersSet
 
-
-  var retainedCalculated = false
-  var retaining : Long = 0
-
-  def retainedSize = size + retaining
-  var minDepthToRoot = -1
-  var maxDepthToRoot = -1
-
-  def addDepth(depth : Int) {
-    if(minDepthToRoot == -1 || depth < minDepthToRoot)
-      minDepthToRoot = depth
-
-    if(maxDepthToRoot == -1 || depth > maxDepthToRoot)
-      maxDepthToRoot = depth
-  }
-
   override def compare(that: JavaHeapObject): Int = heapId.compareTo(that.heapId)
 
   def referers : SortedSet[JavaHeapObject] = referersSet.map(Snapshot.instance.findHeapObject(_).get)

@@ -1,33 +1,49 @@
 package org.shelmet.heap.server
 
-import org.shelmet.heap.model.{Snapshot, JavaClass}
 import org.shelmet.heap.util.SortUtil
+import org.eclipse.mat.snapshot.ISnapshot
+import org.eclipse.mat.snapshot.model.IClass
+
+object HistogramPage {
+  case class Entry(clazz : IClass,instCount : Int,totalSize : Long,totalRetained : Long) {
+  }
+}
 
 /**
  * Prints histogram sortable by class name, count and size.
  */
-class HistogramPage(snapshot : Snapshot,sortParam : String) extends AbstractPage(snapshot) {
+class HistogramPage(snapshot : ISnapshot,sortParam : String) extends AbstractPage(snapshot) {
+
+  import HistogramPage._
   override def run() {
 
     // the original code recomputed the values multiple times, instead capture and manipulate a tuple of
     // class, instance count, and  total size for sorting and display
 
-    val comparator2: ((JavaClass,Int,Long),(JavaClass,Int,Long)) => Boolean =
+    val comparator2: (Entry,Entry) => Boolean =
       sortParam match {
         case "count" =>
           SortUtil.sortByFn(
-            (l, r) => r._2 - l._2,
-            (l, r) => l._1.name.compareTo(r._1.name))
+            (l, r) => r.instCount - l.instCount,
+            (l, r) => l.clazz.getName.compareTo(r.clazz.getName))
         case "class" =>
-          SortUtil.sortByFn((l, r) => l._1.name.compareTo(r._1.name))
+          SortUtil.sortByFn((l, r) => l.clazz.getName.compareTo(r.clazz.getName))
         case _ => // total size
           SortUtil.sortByFn(
-            (l, r) => (r._3 - l._3).toInt,
-            (l, r) => l._1.name.compareTo(r._1.name))
+            (l, r) => (r.totalSize - l.totalSize).toInt,
+            (l, r) => l.clazz.getName.compareTo(r.clazz.getName))
       }
 
+    import scala.collection.JavaConversions._
     val classItems = snapshot.getClasses.map { c =>
-      (c,c.getInstancesCount(includeSubclasses = false),c.getTotalInstanceSize) }.toList.sortWith(comparator2)
+      val (totalInstanceSize,totalRetained) = if(c.isArrayType) {
+        (snapshot.getHeapSize(c.getObjectIds),
+        c.getObjectIds.map(snapshot.getRetainedHeapSize).sum)
+      } else {
+        (c.getHeapSizePerInstance * c.getNumberOfObjects,
+        c.getObjectIds.map(snapshot.getRetainedHeapSize).sum)
+      }
+      Entry(c,c.getNumberOfObjects,totalInstanceSize,totalRetained) }.toList.sortWith(comparator2)
 
     html("Heap Histogram") {
       table {
@@ -39,17 +55,16 @@ class HistogramPage(snapshot : Snapshot,sortParam : String) extends AbstractPage
           out.println("""<th>Avg instance retained size</th>""")
         }
 
-        for (clazz <- classItems) {
+        for (entry <- classItems) {
           tableRow {
-            tableData(printClass(clazz._1))
-            tableData(out.println(clazz._2))
-            tableData(out.println(clazz._3))
-            val instanceRetained = clazz._1.instanceRetained
+            tableData(printClass(entry.clazz))
+            tableData(out.println(entry.instCount))
+            tableData(out.println(entry.totalSize))
+            val instanceRetained = entry.totalRetained
             tableData("" + instanceRetained)
-            val instanceCount = clazz._1.getInstancesCount(includeSubclasses = false)
-            val retainedInstSize = if(instanceCount == 0) "-"
+            val retainedInstSize = if(entry.instCount == 0) "-"
             else if(instanceRetained == 0) "0"
-            else "" + instanceRetained/instanceCount
+            else "" + instanceRetained/entry.instCount
             tableData("" + retainedInstSize)
           }
         }
