@@ -21,10 +21,6 @@ class InitialPassDumpVisitor(snapshot : Snapshot,callStack: Boolean) extends Abs
 
   private var threadObjects = Map[Int, ThreadObject]()
 
-  override def creationDate(date : Date) {
-    snapshot.creationDate = Some(date)
-  }
-
   override def identifierSize(size : Int) {
     snapshot.setIdentifierSize(size)
   }
@@ -77,7 +73,7 @@ class InitialPassDumpVisitor(snapshot : Snapshot,callStack: Boolean) extends Abs
     snapshot.addRoot(new Root(snapshot,HeapId(id), None, BusyMonitorRootType, ""))
   }
 
-  override def classDump(id : HeapId,stackTraceSerialId : Int,
+  override def classDump(id : HeapId,
                          superClassId : HeapId,
                          classLoaderId : HeapId,
                          signerId : HeapId,
@@ -102,8 +98,6 @@ class InitialPassDumpVisitor(snapshot : Snapshot,callStack: Boolean) extends Abs
         new JavaStatic(snapshot,f, se.value)
     }
 
-    val stackTrace = getStackTraceFromSerial(stackTraceSerialId)
-
     val fields = fieldItems.map {
       fi =>
         val fieldName = getNameFromID(fi.nameId)
@@ -111,18 +105,17 @@ class InitialPassDumpVisitor(snapshot : Snapshot,callStack: Boolean) extends Abs
     }
     val c = new JavaClass(snapshot,id,className,superClassId,classLoaderId,signerId,protDomainId,statics,instanceSize,fields)
     snapshot.addClass(id, c)
-    snapshot.setSiteTrace(c, stackTrace)
   }
 
-  override def instanceDump(id : HeapId,stackTraceSerialId : Int,classId : HeapId,fields : Option[Vector[Any]],fieldsLengthBytes : Int) {
+  override def instanceDump(id : HeapId,classId : HeapId,fields : Option[Vector[Any]],fieldsLengthBytes : Int) {
     objectCount +=1
   }
 
-  override def objectArrayDump(id : HeapId,stackTraceSerialId : Int,numElements : Int,classId : HeapId,elementIDs : Seq[HeapId]) {
+  override def objectArrayDump(id : HeapId,numElements : Int,classId : HeapId,elementIDs : Seq[HeapId]) {
     objectCount += 1
   }
 
-  override def primitiveArray(heapId : HeapId,stackTraceSerialID : Int,fieldType : BaseFieldType,data : Seq[AnyVal]) {
+  override def primitiveArray(heapId : HeapId,fieldType : BaseFieldType,data : Seq[AnyVal]) {
     objectCount += 1
   }
 

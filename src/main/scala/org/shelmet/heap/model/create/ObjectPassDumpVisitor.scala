@@ -6,20 +6,14 @@ import org.shelmet.heap.shared.{BaseFieldType, FieldType}
 
 class ObjectPassDumpVisitor(snapshot : Snapshot,callStack: Boolean) extends AbstractDumpVisitor(callStack) {
 
-  override def primitiveArray(heapId : HeapId,stackTraceSerialID : Int,fieldType : BaseFieldType,data : Seq[AnyVal]) {
+  override def primitiveArray(heapId : HeapId,fieldType : BaseFieldType,data : Seq[AnyVal]) {
 
     // we don't use the data field right now
 
-    val objectSize = snapshot.getMinimumObjectSize + fieldType.fieldSize * data.size
-
     val classId = snapshot.getPrimitiveArrayClass(fieldType).heapId
-    val instanceId = getInstanceId(classId)
 
-    val va = new JavaValueArray(heapId,snapshot,instanceId,classId,objectSize,fieldType)
+    val va = new JavaValueArray(heapId,snapshot,classId,fieldType)
     snapshot.addHeapObject(heapId, va)
-
-    val stackTrace = getStackTraceFromSerial(stackTraceSerialID)
-    snapshot.setSiteTrace(va, stackTrace)
   }
 
   override def getClassFieldInfo(classHeapId : HeapId) : Option[List[FieldType]] = {
@@ -30,23 +24,16 @@ class ObjectPassDumpVisitor(snapshot : Snapshot,callStack: Boolean) extends Abst
     }
   }
 
-  override def instanceDump(heapId : HeapId,stackTraceSerialId : Int,classId : HeapId,fields : Option[Vector[Any]],fieldsLengthBytes : Int) {
+  override def instanceDump(heapId : HeapId,classId : HeapId,fields : Option[Vector[Any]],fieldsLengthBytes : Int) {
     if(!fields.isDefined)
       throw new IllegalStateException("Fields must be defined for instance declaration")
-    val instanceId = getInstanceId(classId)
-    val jObj = new JavaObject(heapId,snapshot,instanceId,classId,fields.get,fieldsLengthBytes)
+    val jObj = new JavaObject(heapId,snapshot,classId,fields.get,fieldsLengthBytes)
     snapshot.addHeapObject(heapId, jObj)
-
-    val stackTrace = getStackTraceFromSerial(stackTraceSerialId)
-    snapshot.setSiteTrace(jObj, stackTrace)
   }
 
-  override def objectArrayDump(heapId : HeapId,stackTraceSerialId : Int,numElements : Int,classId : HeapId,
+  override def objectArrayDump(heapId : HeapId,numElements : Int,classId : HeapId,
                                values : Seq[HeapId]) {
-    val stackTrace = getStackTraceFromSerial(stackTraceSerialId)
-    val instanceId = getInstanceId(classId)
-    val arr = new JavaObjectArray(heapId,snapshot,instanceId,classId,values)
+    val arr = new JavaObjectArray(heapId,snapshot,classId,values)
     snapshot.addHeapObject(heapId, arr)
-    snapshot.setSiteTrace(arr, stackTrace)
   }
 }

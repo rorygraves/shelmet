@@ -28,7 +28,7 @@ trait QueryService extends HttpService {
       detach() {
         get {
           path("") {
-            complete(runQuery(new HomepagePage(oldSnapshot,snapshot)))
+            complete(runQuery(new HomepagePage(snapshot)))
           } ~
           path("about") {
             complete(runQuery(new AboutPage(snapshot)))
@@ -40,7 +40,7 @@ trait QueryService extends HttpService {
             complete(runQuery(new AllClassesPage(snapshot,false)))
           } ~
           path("rootSet") {
-            complete(runQuery(new RootSetPage(oldSnapshot,snapshot)))
+            complete(runQuery(new RootSetPage(snapshot)))
           } ~
           path("showInstanceCountsIncPlatform") {
               complete(runQuery(new InstancesCountPage(snapshot,false)))
@@ -58,10 +58,10 @@ trait QueryService extends HttpService {
             complete(runQuery(new ObjectPage(oldSnapshot,snapshot,param)))
           } ~
           path("objectRootsExcWeak" / Segment) { objectRefParam =>
-            complete(runQuery(new ObjectRootsPage(oldSnapshot,snapshot,objectRefParam,false)))
+            complete(runQuery(new ObjectRootsPage(snapshot,objectRefParam,false)))
           } ~
           path("objectRootsIncWeak" / Segment) { objectRefParam =>
-            complete(runQuery(new ObjectRootsPage(oldSnapshot,snapshot,objectRefParam,true)))
+            complete(runQuery(new ObjectRootsPage(snapshot,objectRefParam,true)))
           } ~
           path("rootStack" / Segment) { param =>
             complete(runQuery(new RootStackPage(oldSnapshot,snapshot,param)))
@@ -73,7 +73,7 @@ trait QueryService extends HttpService {
             complete(runQuery(new HistogramPage(snapshot,"")))
           } ~
           path("refsByType" / Segment) { param =>
-            complete(runQuery(new RefsByTypePage(oldSnapshot,snapshot,param)))
+            complete(runQuery(new RefsByTypePage(snapshot,param)))
           } ~
           path("finalizerSummary") {
             complete(runQuery(new FinalizerSummaryPage(oldSnapshot,snapshot)))

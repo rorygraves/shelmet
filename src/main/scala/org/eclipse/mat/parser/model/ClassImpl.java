@@ -122,6 +122,24 @@ public class ClassImpl extends AbstractObjectImpl implements IClass, Comparable<
         }
     }
 
+    public int[] getObjectIds(boolean includeSubclasses) throws SnapshotException {
+        List<IClass> clazzes = new ArrayList<>();
+        clazzes.add(this);
+        if(includeSubclasses)
+            clazzes.addAll(getAllSubclasses());
+
+        List<Integer> res = new ArrayList<>();
+        for(IClass clazz : clazzes)
+            for(int id : clazz.getObjectIds())
+                res.add(id);
+
+        int[] res2 = new int[res.size()];
+        for(int i=0;i<res2.length;i++)
+            res2[i] = res.get(i);
+
+        return res2;
+    }
+
     public long getRetainedHeapSizeOfObjects(boolean calculateIfNotAvailable, boolean approximation,
                                              IProgressListener listener) throws SnapshotException {
         long answer = this.source.getRetainedSizeCache().get(getObjectId());
@@ -213,6 +231,19 @@ public class ClassImpl extends AbstractObjectImpl implements IClass, Comparable<
         this.classLoaderAddress = address;
     }
 
+    public int getClassLoaderId() {
+        return classLoaderId;
+    }
+
+    public ClassImpl getClassLoader() {
+        try {
+            return classLoaderAddress != 0 ? (ClassImpl) this.source.getObject(classLoaderId) : null;
+        } catch (SnapshotException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+
     public List<FieldDescriptor> getFieldDescriptors() {
         return Arrays.asList(fields);
     }
@@ -220,6 +251,18 @@ public class ClassImpl extends AbstractObjectImpl implements IClass, Comparable<
     public int getNumberOfObjects() {
         return instanceCount;
     }
+
+
+    public int getNumberOfObjects(boolean includeSubclsses) {
+        int total = getNumberOfObjects();
+        if(includeSubclsses) {
+            for (IClass subClass : getAllSubclasses())
+                total += subClass.getNumberOfObjects();
+        }
+
+        return total;
+    }
+
 
     /**
      * @since 1.0
@@ -262,7 +305,6 @@ public class ClassImpl extends AbstractObjectImpl implements IClass, Comparable<
     public int getSuperClassId() {
         return superClassId;
     }
-
 
     public ClassImpl getSuperClass() {
         try {
@@ -342,10 +384,6 @@ public class ClassImpl extends AbstractObjectImpl implements IClass, Comparable<
             if (f.getName().equals(name))
                 return f;
         return null;
-    }
-
-    public int getClassLoaderId() {
-        return classLoaderId;
     }
 
     public void addSubClass(ClassImpl clazz) {

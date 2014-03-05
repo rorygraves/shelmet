@@ -13,7 +13,7 @@ class JavaClass(snapshotV : Snapshot,
                 statics: List[JavaStatic],
                 instanceSize: Int,
                 val fields : List[JavaField]
-                ) extends JavaHeapObject(heapId,None,snapshotV) {
+                ) extends JavaHeapObject(heapId,snapshotV) {
 
   def getPackage = {
     if (name.contains("["))
@@ -26,11 +26,6 @@ class JavaClass(snapshotV : Snapshot,
         name.substring(0, pos)
     }
   }
-
-
-  // all classes loaded by bootstrap loader are considered
-  // platform classes.
-  def isPlatformClass : Boolean = isBootstrap
 
   final def getClazz: JavaClass = Snapshot.instance.getJavaLangClass
 
@@ -49,20 +44,7 @@ class JavaClass(snapshotV : Snapshot,
       resolved = true
       for (aStatic <- statics)
         aStatic.resolve(this, snapshot)
-
-      snapshot.getJavaLangClass.addInstance(this)
     }
-
-    getSuperclass.map( _.addSubClass(this))
-  }
-
-
-  private var instanceRefs : Set[HeapId] = Set.empty
-
-  private var subclassRefs : Set[HeapId] = Set.empty
-
-  def addSubClass(jc : JavaClass) {
-    subclassRefs += jc.heapId
   }
 
   def isString: Boolean = name == "java.lang.String"
@@ -71,34 +53,6 @@ class JavaClass(snapshotV : Snapshot,
    * Includes superclass fields
    */
   def getFieldsForInstance: List[JavaField] = fields ++ getSuperclass.map(_.getFieldsForInstance).getOrElse(List.empty)
-
-  def isArray: Boolean = name.indexOf('[') != -1
-
-  def getInstances(includeSubclasses: Boolean): List[JavaHeapObject] = {
-    val instances = instanceRefs.map( _.get)
-
-    if (includeSubclasses)
-      instances.toList ++ getSubclasses.flatMap(_.getInstances(includeSubclasses = true))
-    else
-      instances.toList
-  }
-
-  /**
-   * @return a count of the instances of this class
-   */
-  def getInstancesCount(includeSubclasses: Boolean): Int = {
-    if(includeSubclasses == false)
-      instanceRefs.size
-    else
-      getInstances(includeSubclasses).size
-  }
-
-  def getSubclasses: Set[JavaClass] = subclassRefs.map(_.get.asInstanceOf[JavaClass])
-
-  /**
-   * This can only safely be called after resolve()
-   */
-  def isBootstrap: Boolean = !loader.isDefined
 
   def getStatics: List[JavaStatic] = statics
 
@@ -148,36 +102,5 @@ class JavaClass(snapshotV : Snapshot,
       refs ::= "protection domain for"
 
     refs ::: super.describeReferenceTo(target)
-  }
-
-  /**
-   * @return the size of an instance of this class.  Gives 0 for an array type.
-   */
-  def getInstanceSize: Int = instanceSize + Snapshot.instance.getMinimumObjectSize
-
-  override def size: Int = Snapshot.instance.getJavaLangClass.getInstanceSize
-
-  override def visitReferencedObjects(visit : JavaHeapObject => Unit,includeStatics : Boolean = true) {
-    super.visitReferencedObjects(visit,includeStatics)
-    getSuperclass.foreach( visit(_) )
-    loader.foreach( visit )
-    getSigners.foreach( visit )
-    getProtectionDomain.map( visit )
-
-    if(includeStatics)
-      for (aStatic <- statics) {
-        val f = aStatic.field
-        if (f.isObjectField) {
-          val other = aStatic.getValue
-          other match {
-            case other1: JavaHeapObject => visit(other1)
-            case _ =>
-          }
-        }
-      }
-  }
-
-  private[model] def addInstance(inst: JavaHeapObject) {
-    instanceRefs += inst.heapId
   }
 }

@@ -18,8 +18,6 @@ import java.util.List;
 
 /**
  * Interface for a class instance in the heap dump.
- *
- * @noimplement
  */
 public interface IClass extends IObject {
     String JAVA_LANG_CLASS = "java.lang.Class";
@@ -41,16 +39,25 @@ public interface IClass extends IObject {
      */
     public int getNumberOfObjects();
 
+    public int getNumberOfObjects(boolean includeSubclsses);
+
     /**
      * Ids of all instances of this class (an empty array if there are no instances of the class)
      */
     public int[] getObjectIds() throws SnapshotException;
 
     /**
+     * Ids of all instances of this class (an empty array if there are no instances of the class)
+     * @param includeSubclasses If true return the ids of all subclass instances as well.
+     */
+    public int[] getObjectIds(boolean includeSubclasses) throws SnapshotException;
+
+    /**
      * Returns the id of the class loader which loaded this class.
      */
     public int getClassLoaderId();
 
+    public IClass getClassLoader();
     /**
      * Returns the address of the class loader which loaded this class.
      */

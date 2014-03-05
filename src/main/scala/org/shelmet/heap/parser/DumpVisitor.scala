@@ -24,7 +24,7 @@ trait DumpVisitor {
     */
   def getClassFieldInfo(classHeapId : HeapId) : Option[List[FieldType]]  = None
 
-  def classDump(id : HeapId,stackTraceSerialId : Int,
+  def classDump(id : HeapId,
                 superClassId : HeapId,
                 classLoaderId : HeapId,
                 signerId : HeapId,
@@ -33,12 +33,12 @@ trait DumpVisitor {
                 constPoolEntries : Map[Int,Any],
                 staticItems : List[ClassStaticEntry],
                 fieldItems : List[ClassFieldEntry]) {}
-  def instanceDump(id : HeapId,stackTraceSerialId : Int,classId : HeapId,fields : Option[Vector[Any]],fieldsLengthBytes : Int) {}
-  def objectArrayDump(id : HeapId,stackTraceSerialId : Int,numElements : Int,classId : HeapId,elementIDs : Seq[HeapId]) {}
+  def instanceDump(id : HeapId,classId : HeapId,fields : Option[Vector[Any]],fieldsLengthBytes : Int) {}
+  def objectArrayDump(id : HeapId,numElements : Int,classId : HeapId,elementIDs : Seq[HeapId]) {}
   def unloadClass(classSerialNo : Int) {}
   def heapDumpEnd() {}
   def heapSummary(totalLiveBytes : Int,totalLiveInstances : Int,totalBytesAllocated : Long,totalInstancesAllocated : Long) {}
   def stackFrame(id : Long,methodNameId : Long,methodSigId : Long,sourceFileNameId : Long,classSerialId : Int,lineNo : Int) {}
   def stackTrace(serialNo : Int,threadSerialNo : Int,frameIDs : Vector[Long]) {}
-  def primitiveArray(heapId : HeapId,stackTraceSerialID : Int,fieldType : BaseFieldType,data : Seq[AnyVal]) {}
+  def primitiveArray(heapId : HeapId,fieldType : BaseFieldType,data : Seq[AnyVal]) {}
   }

@@ -29,7 +29,7 @@ public interface IObject extends Serializable {
      * The type of the primitive array.
      */
 
-    public String[] TYPE_STRINGS = { null,null,"Object",null,"boolean","char","float","double","byte","short","int","long"};
+    // to mape these use field.getVerboseSignature
     public interface Type {
         int OBJECT = 2;
 

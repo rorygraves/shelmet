@@ -234,7 +234,7 @@ class HprofReader(fileName: String) extends Logging {
       itemType match {
         case HPROF_GC_INSTANCE_DUMP =>
           val id = reader.readHeapId
-          val stackTraceSerialId = reader.readInt
+          reader.skipBytes(4) // the stackTraceSerialId
           val classID = reader.readHeapId
           val fieldDataBlockSize = reader.readInt
           val rawFieldData = reader.readBytes(fieldDataBlockSize)
@@ -249,10 +249,10 @@ class HprofReader(fileName: String) extends Logging {
             case None => None
           }
 
-          dumpVisitor.instanceDump(id,stackTraceSerialId,classID,fields,fieldDataBlockSize)
+          dumpVisitor.instanceDump(id,classID,fields,fieldDataBlockSize)
         case HPROF_GC_CLASS_DUMP =>
           val id = reader.readHeapId
-          val stackTraceSerialId = reader.readInt
+          reader.skipBytes(4) // the stackTraceSerialId
           val superClassId = reader.readHeapId
           val classLoaderId = reader.readHeapId
           val signersId = reader.readHeapId
@@ -286,7 +286,7 @@ class HprofReader(fileName: String) extends Logging {
             new ClassFieldEntry(nameId,itemType)
           }).toList
 
-          dumpVisitor.classDump(id,stackTraceSerialId,superClassId,classLoaderId,signersId,protDomainId,instanceSize,
+          dumpVisitor.classDump(id,superClassId,classLoaderId,signersId,protDomainId,instanceSize,
             constPoolEntries,staticItems,fieldItems)
         case HPROF_GC_ROOT_UNKNOWN =>
           val id = reader.readID
@@ -326,11 +326,11 @@ class HprofReader(fileName: String) extends Logging {
           dumpVisitor.gcRootMonitorUsed(id)
         case HPROF_GC_OBJ_ARRAY_DUMP =>
           val id = reader.readHeapId
-          val stackTraceSerialId = reader.readInt
+          reader.skipBytes(4) // stackTraceSerialId
           val numElements = reader.readInt
           val elementClassID = reader.readHeapId
           val elements = for(i <- 1 to numElements) yield HeapId(reader.readID)
-          dumpVisitor.objectArrayDump(id,stackTraceSerialId,numElements,elementClassID,elements)
+          dumpVisitor.objectArrayDump(id,numElements,elementClassID,elements)
         case HPROF_GC_PRIM_ARRAY_DUMP =>
           readPrimitiveArray(reader,dumpVisitor)
         case _ => {
@@ -387,7 +387,7 @@ class HprofReader(fileName: String) extends Logging {
 
   private def readPrimitiveArray(reader : DataReader,dumpVisitor : DumpVisitor) {
     val id = reader.readHeapId
-    val stackTraceSerialID = reader.readInt
+    reader.skipBytes(4) // stackTraceSerialID
     val numElements = reader.readInt
 
     val elementClassID : Byte = reader.readByte
@@ -399,7 +399,7 @@ class HprofReader(fileName: String) extends Logging {
 
     val data = readPrimativeArray(reader,numElements,fieldType)
 
-    dumpVisitor.primitiveArray(id,stackTraceSerialID,fieldType,data)
+    dumpVisitor.primitiveArray(id,fieldType,data)
   }
 
   def readPrimativeArray(reader : DataReader,numElements : Int,fieldType : FieldType): Seq[AnyVal] = {

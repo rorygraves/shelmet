@@ -174,6 +174,10 @@ abstract public class GCRootInfo implements Serializable {
         return type;
     }
 
+    public String getTypeString() {
+        return getTypeAsString(type);
+    }
+
     /**
      * A printable version of the type
      *

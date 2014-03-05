@@ -2,31 +2,50 @@ package org.shelmet.heap.server
 
 import org.shelmet.heap.model.Snapshot
 import org.eclipse.mat.snapshot.ISnapshot
+import org.eclipse.mat.snapshot.model.{GCRootInfo, IObject}
 
 /**
  * Query to show the StackTrace for a given root
  */
-class RootStackPage(snapshot : Snapshot,newSnapshot : ISnapshot,query : String) extends AbstractPage(newSnapshot) {
+class RootStackPage(oldSnapshot : Snapshot,snapshot : ISnapshot,query : String) extends AbstractPage(snapshot) {
+
   override def run() {
-    val index = parseHex(query).asInstanceOf[Int]
-    if(index < 0 || index >= snapshot.noRoots) {
-      html("Root not found") {
-        out.println("Root at " + index + " not found")
-      }
-    } else {
-      val root = snapshot.roots(index)
-      root.stackTrace match {
-        case Some(t) if !t.frames.isEmpty =>
-          html("Stack Trace for " + root.getDescription) {
-            out.println("<p>")
-            printStackTrace(t)
-            out.println("</p>")
-          }
-        case _ =>
-          html("Stack Trace not found") {
-            out.println("No stack trace for " + root.getDescription)
-          }
-      }
+    query.split(":").toList match {
+      case (id : String) :: (indexStr : String) :: Nil =>
+        val targetObj = super.findObjectByQuery(query)
+        targetObj match {
+          case None =>
+            html("Root not found") {
+              out.println("Root at " + query + " not found")
+            }
+          case Some(obj : IObject) =>
+            val index = Integer.parseInt(indexStr)
+            val roots = obj.getGCRootInfo
+            if(index < roots.size) {
+              val root = roots(index)
+              html(s"Stack Trace for ${GCRootInfo.getTypeAsString(root.getType)}($index)") {
+                out.println("<p>")
+                if(root.getContextAddress != 0) {
+                  val trace = snapshot.getThreadStack(snapshot.mapAddressToId(root.getContextAddress))
+                  if(trace == null)
+                    out.println("No trace available")
+                  else
+                    printStackTrace(trace)
+                } else {
+                  out.println("No context thread")
+                }
+                out.println("</p>")
+              }
+            } else {
+              html("Root not found") {
+                out.println("Root at " + index + " not found")
+              }
+            }
+        }
+      case _ =>
+        html("Root not valid - form address:index") {
+          out.println("Root Root not valid - form address:index")
+        }
     }
   }
 }

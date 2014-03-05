@@ -179,7 +179,7 @@ public class Pass2Parser extends AbstractParser {
 
     private void readInstanceDump(long segmentStartPos) throws IOException {
         long id = readID();
-        in.skipBytes(4);
+        in.skipBytes(4); // stackTraceSerialId
         long classID = readID();
         int bytesFollowing = in.readInt();
         long endPos = in.position() + bytesFollowing;

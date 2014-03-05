@@ -7,21 +7,12 @@ import java.io.IOException
 import org.shelmet.heap.model.{StackFrame, StackTrace}
 import org.shelmet.heap.HeapId
 import com.typesafe.scalalogging.slf4j.Logging
-import org.shelmet.heap.shared.InstanceId
 
 class AbstractDumpVisitor(callStack: Boolean) extends DumpVisitor with Logging {
 
   var names = Map[Long, String]()
   var classNameFromObjectID = Map[HeapId, String]()
-  var nextObjectIdForClass = Map[HeapId,Int]()
   var classNameFromSerialNo = Map[Int, String]()
-
-  def getInstanceId(objectTypeId : HeapId) : InstanceId = {
-    val res = nextObjectIdForClass.getOrElse(objectTypeId,1)
-    nextObjectIdForClass += (objectTypeId -> (res + 1))
-    InstanceId(objectTypeId,res)
-  }
-
 
   // the heap indexed items in the map
   var stackTraces = Map[Int, StackTrace]()

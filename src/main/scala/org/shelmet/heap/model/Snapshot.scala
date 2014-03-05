@@ -2,12 +2,10 @@ package org.shelmet.heap.model
 
 import java.lang.ref.SoftReference
 import scala.collection.SortedMap
-import scala.collection.mutable.ListBuffer
 import org.shelmet.heap.parser.HprofReader
 import org.shelmet.heap.model.create.{ObjectPassDumpVisitor, InitialPassDumpVisitor}
 import org.shelmet.heap.HeapId
 import com.typesafe.scalalogging.slf4j.Logging
-import java.util.Date
 import org.shelmet.heap.shared.BaseFieldType
 
 /**
@@ -18,7 +16,6 @@ import org.shelmet.heap.shared.BaseFieldType
 object Snapshot extends Logging {
   val SMALL_ID_MASK: Long = 0x0FFFFFFFFL
   final val EMPTY_BYTE_ARRAY: Array[Byte] = new Array[Byte](0)
-  private val DOT_LIMIT: Int = 5000
 
   def readFromDump(hpr : HprofReader,callStack : Boolean,calculateRefs : Boolean) : Snapshot = {
     val snapshot = new Snapshot()
@@ -33,7 +30,7 @@ object Snapshot extends Logging {
     hpr.readFile(new ObjectPassDumpVisitor(snapshot,callStack))
     logger.info("Parse step complete")
     logger.info("Snapshot read, resolving...")
-    snapshot.resolve(calculateRefs)
+    snapshot.resolve()
 
     logger.info("Snapshot load complete.")
     Snapshot.clearInstance()
@@ -48,13 +45,9 @@ object Snapshot extends Logging {
 
 class Snapshot extends Logging {
 
-  import Snapshot._
-
   private var heapObjects = SortedMap[HeapId, JavaHeapObject]()
   var roots: Map[Int,Root] = Map()
   private var classes = SortedMap[String, JavaClass]()
-  private var siteTraces = Map[HeapId, StackTrace]()
-  private var rootsMap = Map[HeapId, Set[Root]]()
   private var finalizablesCache: SoftReference[List[HeapId]] = null
   var weakReferenceClass: JavaClass = null
   var referentFieldIndex: Int = 0
@@ -62,30 +55,13 @@ class Snapshot extends Logging {
   var javaLangObjectClass: JavaClass = null
   private var javaLangClassLoader: JavaClass = null
   var identifierSize: Int = 8
-  private var minimumObjectSize: Int = 0
-  var creationDate : Option[Date] = None
-
-  def setSiteTrace(obj: JavaHeapObject, trace: Option[StackTrace]) {
-    trace match {
-      case Some(t) if !t.frames.isEmpty =>
-        siteTraces += (obj.heapId -> t)
-      case _ =>
-    }
-  }
 
   def noObjects = heapObjects.size
-  def noClasses = classes.size
-  def noUserClasses = classes.values.filterNot(_.isPlatformClass).size
   def noRoots = roots.size
-
-  def getSiteTrace(obj: JavaHeapObject): Option[StackTrace] = siteTraces.get(obj.heapId)
 
   def setIdentifierSize(size: Int) {
     identifierSize = size
-    minimumObjectSize = 2 * size
   }
-
-  def getMinimumObjectSize: Int = minimumObjectSize
 
   def addHeapObject(id: HeapId, ho: JavaHeapObject) {
     heapObjects += (id -> ho)
@@ -102,11 +78,10 @@ class Snapshot extends Logging {
     putInClassesMap(c)
   }
 
-  def allObjects = heapObjects.values
   /**
    * Called after reading complete, to initialize the structure
    */
-  def resolve(calculateRefs: Boolean) {
+  def resolve() {
     logger.info("Resolving " + heapObjects.size + " objects...")
 
     javaLangObjectClass = findClassByName("java.lang.Object").getOrElse(throw new IllegalStateException("No java.lang.Object class"))
@@ -125,23 +100,6 @@ class Snapshot extends Logging {
 
     weakReferenceClass = findClassByName("java.lang.ref.Reference").getOrElse(throw new IllegalStateException("No java.lang.ref.Reference"))
     referentFieldIndex = weakReferenceClass.getFieldsForInstance.indexWhere(_.name == "referent")
-
-    if (calculateRefs)
-      calculateReferencesToObjects()
-  }
-
-  private def calculateReferencesToObjects() {
-    logger.info("Chasing references, expect " + heapObjects.size / DOT_LIMIT + " dots")
-    var count: Int = 0
-    for (t <- heapObjects.values) {
-      t.visitReferencedObjects(_.addReferenceFrom(t))
-      count += 1
-      if (count % DOT_LIMIT == 0)
-        logger.info(".")
-    }
-
-    for (r <- roots.values)
-      findHeapObject(r.valueHeapId).foreach( _.addReferenceFromRoot(r))
   }
 
   def findHeapObject(heapId: HeapId): Option[JavaHeapObject] = findThing(heapId)
@@ -200,41 +158,6 @@ class Snapshot extends Logging {
     finalizablesCache = new SoftReference[List[HeapId]](finalizablesC.reverse)
     finalizablesC
   }
-
-  def rootsetReferencesTo(target: JavaHeapObject, includeWeak: Boolean): List[CompleteReferenceChain] = {
-
-    val fifo = ListBuffer[List[HeapId]]()
-    var result = List[CompleteReferenceChain]()
-    var visited = Set[HeapId](target.heapId)
-
-    fifo += target.heapId :: Nil
-    while (fifo.size > 0) {
-      val chain: List[HeapId] = fifo.remove(0)
-      val curr: JavaHeapObject = chain.head.get
-      curr.getRootReferences.foreach { root =>
-        result = new CompleteReferenceChain(root,chain) :: result
-      }
-
-      val set = if(includeWeak)
-        curr.referersSet
-      else
-        curr.hardRefersSet
-      set.foreach {
-        t =>
-          if (!visited.contains(t)) {
-            visited += t
-            fifo += t :: chain
-          }
-      }
-    }
-    result
-  }
-
-  private[model] def addReferenceFromRoot(root: Root, obj: JavaHeapObject) {
-    rootsMap += obj.heapId -> (rootsMap.getOrElse(obj.heapId,Set.empty) + root)
-  }
-
-  private[model] def getRoots(obj: JavaHeapObject): Set[Root] = rootsMap.getOrElse(obj.heapId,Set.empty)
 
   private[model] def getJavaLangClass: JavaClass = javaLangClass
 

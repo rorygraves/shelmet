@@ -1,11 +1,10 @@
 package org.shelmet.heap.server
 
-import org.shelmet.heap.model.Snapshot
 import java.text.SimpleDateFormat
 import java.util.{TimeZone,Date}
 import org.eclipse.mat.snapshot.ISnapshot
 
-class HomepagePage(snapshot: Snapshot,newSnapshot : ISnapshot) extends AbstractPage(newSnapshot) {
+class HomepagePage(snapshot : ISnapshot) extends AbstractPage(snapshot) {
 
   def formatDateAsUTC(date : Date) =
   {
@@ -24,31 +23,32 @@ class HomepagePage(snapshot: Snapshot,newSnapshot : ISnapshot) extends AbstractP
       table {
         tableRow {
           tableData("Creation time:")
-          tableData(Option(newSnapshot.getSnapshotInfo.getCreationDate).map(formatDateAsUTC).getOrElse("Unknown"))
+          tableData(Option(snapshot.getSnapshotInfo.getCreationDate).map(formatDateAsUTC).getOrElse("Unknown"))
         }
         tableRow {
           tableData("No Objects:")
           tableData {
-            printAnchor("showInstanceCountsIncPlatform/","" + newSnapshot.getSnapshotInfo.getNumberOfObjects)
+            printAnchor("showInstanceCountsIncPlatform/","" + snapshot.getSnapshotInfo.getNumberOfObjects)
           }
         }
         tableRow {
           tableData("Classes (including system classes):")
           tableData {
-            printAnchor("allClassesWithPlatform/","" + newSnapshot.getSnapshotInfo.getNumberOfClasses)
+            printAnchor("allClassesWithPlatform/","" + snapshot.getSnapshotInfo.getNumberOfClasses)
           }
         }
         tableRow {
           tableData("User Classes:")
           tableData {
+            import scala.collection.JavaConversions._
             printAnchor("allClassesWithoutPlatform/","" + snapshot.getClasses.count(!_.isPlatformClass))
           }
         }
       }
 
 
-      val topDominators = newSnapshot.getImmediateDominatedIds(-1)
-      val x = topDominators.map { dId => (dId,newSnapshot.getRetainedHeapSize(dId))}.sortBy( x => - x._2)
+      val topDominators = snapshot.getImmediateDominatedIds(-1)
+      val x = topDominators.map { dId => (dId,snapshot.getRetainedHeapSize(dId))}.sortBy( x => - x._2)
 
       val top10 = x.take(10)
       h2("Largest 10 objects by retained size (New)")
@@ -60,7 +60,7 @@ class HomepagePage(snapshot: Snapshot,newSnapshot : ISnapshot) extends AbstractP
 
         top10 foreach { case (objId,size) =>
           tableRow {
-            tableData(printThing(newSnapshot.getObject(objId)))
+            tableData(printThing(snapshot.getObject(objId)))
             tableData(s"$size")
           }
         }

@@ -61,7 +61,7 @@ class FinalizerSummaryPage(snapshot : Snapshot,newSnapshot : ISnapshot) extends 
         tableRow {
           out.println("<th>Count</th><th>Class</th>")
         }
-        elements foreach { element =>
+        elements foreach { (element: HistogramElement) =>
           tableRow {
             tableData(out.println(element.count))
             tableData(printClass(element.clazz))

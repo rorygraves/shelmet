@@ -18,6 +18,7 @@ libraryDependencies ++= List(
   "ch.qos.logback" % "logback-classic" % "1.0.13",
   "org.scalatest" %% "scalatest" % "2.0" % "test",
   "xmlunit" % "xmlunit" % "1.5" % "test",
+  "junit" % "junit" % "4.11" % "test",
   "com.typesafe" %% "scalalogging-slf4j" % "1.0.1",
   "io.spray" % "spray-can" % "1.2.0" exclude("org.scala-lang", "scala-library"),
   "io.spray" % "spray-routing" % "1.2.0" exclude("org.scala-lang", "scala-library"),

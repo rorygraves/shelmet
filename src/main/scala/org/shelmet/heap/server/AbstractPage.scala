@@ -4,9 +4,10 @@ import org.shelmet.heap.model._
 import org.shelmet.heap.util.Misc
 import java.io.PrintWriter
 import org.shelmet.heap.HeapId
-import org.eclipse.mat.snapshot.model.{FieldDescriptor, IObject, IClass}
+import org.eclipse.mat.snapshot.model._
 import org.eclipse.mat.snapshot.ISnapshot
 import org.eclipse.mat.SnapshotException
+import scala.Some
 
 abstract class AbstractPage(snapshot : ISnapshot) {
 
@@ -194,12 +195,18 @@ abstract class AbstractPage(snapshot : ISnapshot) {
     }
     thing match {
       case io : IObject =>
-//        val oldObj = snapshot.findHeapObject(HeapId.apply(io.getObjectAddress)).get
-        val oldObj : JavaObject  =  null
         printThingAnchorTag(io.getObjectAddress,io.getDisplayName + " (" + io.getUsedHeapSize + " bytes)")
-
       case ho: JavaHeapObject =>
-        printThingAnchorTag(ho.heapId,thing.toString + " (" + ho.size + " bytes)")
+        val obj = snapshot.getObject(snapshot.mapAddressToId(ho.heapId.id))
+        printThing(obj)
+      case or : ObjectReference =>
+        try {
+        val obj = snapshot.getObject(or.getObjectId)
+        printThing(obj)
+        }catch {
+          case s : SnapshotException =>
+          out.print("DEAD REF - " + or.getObjectAddress)
+        }
       case b : Boolean => printEncoded(b.toString)
       case l : Long => printEncoded(l.toString)
       case c : Char => printEncoded(c.toString)
@@ -212,18 +219,12 @@ abstract class AbstractPage(snapshot : ISnapshot) {
     }
   }
 
-  protected def printRoot(root: Root) {
-    val st = root.stackTrace
+  protected def printRoot(root: GCRootInfo,rootIndex : Int) {
 
-    val traceAvailable = st match {
-      case Some(t) if !t.frames.isEmpty => true
-      case _ => false
-    }
-
-    if (traceAvailable)
-      printAnchor("rootStack/" + hexString(root.index),root.getDescription)
+    if(root.getContextAddress != 0 && snapshot.getThreadStack(snapshot.mapAddressToId(root.getContextAddress)) != null)
+      printAnchor("rootStack/" + hexString(root.getObjectAddress) +":" + rootIndex,root.getTypeString)
     else
-      printEncoded(root.getDescription)
+      printEncoded(root.getTypeString)
   }
 
   protected def printClass(clazz: JavaClass) {
@@ -248,14 +249,9 @@ abstract class AbstractPage(snapshot : ISnapshot) {
     printEncoded(field.getName + " (" + field.getVerboseSignature + ")")
   }
 
-  protected def printStackTrace(trace: StackTrace) {
-    trace.frames.foreach { f =>
-      out.print("<font color=\"purple\">")
-      printEncoded(f.className)
-      out.print("</font>")
-      printEncoded("." + f.methodName + "(" + f.methodSignature + ")")
-      out.print(" <bold>:</bold> ")
-      printEncoded(f.sourceFileName + " line " + f.getLineNumber)
+  protected def printStackTrace(trace: IThreadStack) {
+    trace.getStackFrames.foreach { (f: IStackFrame) =>
+      printEncoded(f.getText)
       out.println("<br/>")
     }
   }

@@ -1,39 +1,36 @@
 package org.shelmet.heap.server
 
-import org.shelmet.heap.model.{Snapshot, JavaClass}
 import scala.collection._
 import org.eclipse.mat.snapshot.ISnapshot
 import org.eclipse.mat.snapshot.model.{IObject, IClass}
-import org.shelmet.heap.HeapId
+import org.shelmet.heap.util.Misc
 
 /**
  * References by type summary
  */
-class RefsByTypePage(snapshot : Snapshot,newSnaphsot : ISnapshot,query : String) extends AbstractPage(newSnaphsot) {
+class RefsByTypePage(snapshot : ISnapshot,query : String) extends AbstractPage(snapshot) {
   override def run() {
     findObjectByQuery(query) match {
-      case Some(newClazz : IClass) =>
-        val clazz = snapshot.findHeapObject(HeapId(newClazz.getObjectAddress)).get.asInstanceOf[JavaClass]
-        val referrersStat = mutable.Map[JavaClass,Long]()
-        val refereesStat = mutable.Map[JavaClass,Long]()
+      case Some(clazz : IClass) =>
+        val referrersStat = mutable.Map[IObject,Long]()
+        val refereesStat = mutable.Map[IObject,Long]()
 
-        clazz.getInstances(includeSubclasses = false) foreach {
-          instance =>
-            instance.referers foreach {
-              ref =>
-                val cl: JavaClass = ref.getClazz
-                 referrersStat.put(cl,referrersStat.getOrElse(cl,0L)+1)
-            }
-            instance.visitReferencedObjects{ obj =>
-              val cl: JavaClass = obj.getClazz
-              refereesStat.put(cl,refereesStat.getOrElse(cl,0L)+1)
-            }
+        clazz.getObjectIds foreach { instId =>
+          snapshot.getInboundRefererIds(instId) foreach { iRefId =>
+            val cl = snapshot.getObject(iRefId).getClazz
+            referrersStat.put(cl,referrersStat.getOrElse(cl,0L)+1)
+          }
+
+          snapshot.getOutboundReferentIds(instId) foreach { oRefId =>
+            val cl = snapshot.getObject(oRefId).getClazz
+            refereesStat.put(cl,refereesStat.getOrElse(cl,0L)+1)
+          }
         }
 
         html("References by Type") {
           out.println("<p>")
           printClass(clazz)
-          out.println("[" + clazz.getIdString + "]")
+          out.println("[" + clazz.getObjectId + "]")
           out.println("</p>")
           if (referrersStat.size != 0) {
             out.println("<h3>Referrers by Type</h3>")
@@ -57,7 +54,7 @@ class RefsByTypePage(snapshot : Snapshot,newSnaphsot : ISnapshot,query : String)
     }
   }
 
-  private def print(map: Map[JavaClass, Long]) {
+  private def print(map: Map[IObject, Long]) {
     val sortedPairs = map.toList.sortBy(_._2)
 
     table {
@@ -65,7 +62,7 @@ class RefsByTypePage(snapshot : Snapshot,newSnaphsot : ISnapshot,query : String)
       for ((clazz,count) <- sortedPairs) {
         tableRow {
           tableData {
-            printAnchor("refsByType/" + clazz.getIdString,clazz.displayName)
+            printAnchor("refsByType/" + Misc.toHex(clazz.getObjectAddress),clazz.getNewDisplayName)
           }
           tableData(out.println(count))
         }

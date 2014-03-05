@@ -1,17 +1,16 @@
 package org.shelmet.heap.server
 
-import org.shelmet.heap.model.{JavaHeapObject, Snapshot, JavaClass}
+import org.shelmet.heap.model.Snapshot
 import org.eclipse.mat.snapshot.ISnapshot
-import org.eclipse.mat.snapshot.model.IClass
-import org.shelmet.heap.HeapId
+import org.eclipse.mat.snapshot.model.{IObject, IClass}
 
 class InstancesPage(oldSnapshot : Snapshot,snapshot : ISnapshot,query : String,includeSubclasses: Boolean) extends AbstractPage(snapshot) {
 
   override def run() {
     findObjectByQuery(query) match {
-      case Some(newClazz : IClass) =>
+      case Some(clazz : IClass) =>
 
-        val clazz : JavaClass = oldSnapshot.findThing(HeapId(newClazz.getObjectAddress),false).get.asInstanceOf[JavaClass]
+//        val oldClazz : JavaClass = oldSnapshot.findThing(HeapId(clazz.getObjectAddress),false).get.asInstanceOf[JavaClass]
         val title = if (includeSubclasses)
           "Instances of " + query + " (including subclasses)"
         else
@@ -21,7 +20,8 @@ class InstancesPage(oldSnapshot : Snapshot,snapshot : ISnapshot,query : String,i
           out.print("<strong>")
           printClass(clazz)
           out.print("</strong><br/><br/>")
-          val objects = clazz.getInstances(includeSubclasses).sortWith( _.getIdString < _.getIdString)
+          clazz.getObjectIds
+          val objects = clazz.getObjectIds(includeSubclasses).map(snapshot.getObject).sortWith( _.getObjectAddress < _.getObjectAddress)
           var totalSize: Long = 0
           var instances: Long = 0
           var i: Int = 0
@@ -31,13 +31,13 @@ class InstancesPage(oldSnapshot : Snapshot,snapshot : ISnapshot,query : String,i
               if (i % 1000 == 0) System.out.print(".")
               printThing(obj)
               out.println("<br/>")
-              totalSize += obj.size
+              totalSize += obj.getUsedHeapSize
               instances += 1
           }
           h2(s"Total of $instances instances occupying $totalSize bytes.")
         }
-      case Some(x : JavaHeapObject) =>
-        val text = s"Object ${x.getIdString} is not a class"
+      case Some(x : IObject) =>
+        val text = s"Object ${x.getObjectAddress.toHexString} is not a class"
         html(text) {
           out.println(text)
         }
