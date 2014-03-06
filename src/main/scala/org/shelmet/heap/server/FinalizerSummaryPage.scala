@@ -1,11 +1,11 @@
 package org.shelmet.heap.server
 
-import org.shelmet.heap.model.{Snapshot, JavaClass, JavaHeapObject}
 import org.eclipse.mat.snapshot.ISnapshot
+import org.eclipse.mat.snapshot.model.{IClass, IObject}
 
 object FinalizerSummaryPage {
 
-  private class HistogramElement(val clazz: JavaClass) extends Ordered[HistogramElement] {
+  private class HistogramElement(val clazz: IClass) extends Ordered[HistogramElement] {
     var count: Long = 0L
 
     def updateCount() {
@@ -16,7 +16,7 @@ object FinalizerSummaryPage {
   }
 }
 
-class FinalizerSummaryPage(snapshot : Snapshot,newSnapshot : ISnapshot) extends AbstractPage(newSnapshot) {
+class FinalizerSummaryPage(snapshot : ISnapshot) extends AbstractPage(snapshot) {
   import FinalizerSummaryPage.HistogramElement
 
   override def run() {
@@ -24,18 +24,18 @@ class FinalizerSummaryPage(snapshot : Snapshot,newSnapshot : ISnapshot) extends 
       out.println("<p>")
       out.println("<b><a href='/'>All Classes (excluding platform)</a></b>")
       out.println("</p>")
-      val objects = snapshot.getFinalizerObjects
-      printFinalizerSummary(objects.map(_.get))
+      val objects = FinalizerObjectsPage.getFinalizerObjects(snapshot)
+      printFinalizerSummary(objects)
     }
   }
 
-  private def printFinalizerSummary(objects: List[JavaHeapObject]) {
+  private def printFinalizerSummary(objects: List[IObject]) {
     var count: Int = 0
-    var map = Map[JavaClass, FinalizerSummaryPage.HistogramElement]()
+    var map = Map[IClass, FinalizerSummaryPage.HistogramElement]()
     objects foreach {
       obj =>
       count += 1
-      val clazz: JavaClass = obj.getClazz
+      val clazz = obj.getClazz
       if (!map.contains(clazz))
         map += (clazz -> new HistogramElement(clazz))
 

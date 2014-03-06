@@ -1,6 +1,5 @@
 package org.shelmet.heap.server
 
-import org.shelmet.heap.model.Snapshot
 import akka.actor.{ActorSystem, Props}
 import akka.io.IO
 import spray.can.Http
@@ -10,9 +9,7 @@ import scala.concurrent.duration._
 import akka.io.Tcp.{Bound, CommandFailed}
 import com.typesafe.scalalogging.slf4j.Logging
 import org.shelmet.heap.Config
-import org.shelmet.heap.parser.HprofReader
 import org.eclipse.mat.parser.internal.SnapshotFactoryImpl
-import java.io.File
 import org.eclipse.mat.util.ConsoleProgressListener
 import org.eclipse.mat.snapshot.ISnapshot
 
@@ -20,26 +17,22 @@ object SHelmetServer extends Logging {
   def apply(config : Config) = {
     val dumpFile = config.dumpFile
     logger.info(s"Reading from $dumpFile...")
-    val reader = new HprofReader(dumpFile.getAbsolutePath)
 
-    val snapshot = Snapshot.readFromDump(reader,config.trackObjectAllocationStacks,config.trackReferencesToObjects)
-
-    // new snapshot handling
     val factory = new SnapshotFactoryImpl()
-    val newSnapshot = factory.openSnapshot(config.dumpFile, new java.util.HashMap[String, String](),
+    val snapshot = factory.openSnapshot(config.dumpFile, new java.util.HashMap[String, String](),
       new ConsoleProgressListener(System.out))
 
-    new SHelmetServer(config.port, snapshot,newSnapshot)
+    new SHelmetServer(config.port, snapshot)
   }
 }
 
-class SHelmetServer private (port: Int, oldSnapshot: Snapshot,newSnapshot : ISnapshot) extends Logging {
+class SHelmetServer private (port: Int,snapshot : ISnapshot) extends Logging {
 
   implicit var system : ActorSystem = null
 
   def start() : Option[Int] = {
     system = ActorSystem("shelmet")
-    val service = system.actorOf(Props(new QueryServiceActor(oldSnapshot,newSnapshot)), "web-service")
+    val service = system.actorOf(Props(new QueryServiceActor(snapshot)), "web-service")
     logger.info("Initialising web server")
     val res = Patterns.ask(IO(Http),Http.Bind(service, "localhost", port),5000)
     Await.result(res,5 seconds) match {

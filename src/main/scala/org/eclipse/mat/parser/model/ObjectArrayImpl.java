@@ -23,7 +23,6 @@ import java.util.List;
 /**
  * Implementation of a Java object array.
  *
- * @noextend
  */
 public class ObjectArrayImpl extends AbstractArrayImpl implements IObjectArray {
     private static final long serialVersionUID = 2L;
@@ -132,5 +131,23 @@ public class ObjectArrayImpl extends AbstractArrayImpl implements IObjectArray {
 
         return answer;
     }
+
+    @Override
+    public List<String> describeReferenceTo(IObject other) throws SnapshotException {
+        int targetId = other.getObjectId();
+        long targetAddr = other.getObjectAddress();
+        List<String> res = new ArrayList<>();
+
+        long[] referenceArray = getReferenceArray();
+        for(int i=0;i<referenceArray.length;i++) {
+            if(referenceArray[i] == targetAddr)
+                res.add("element " + i);
+        }
+
+        if(getClassId() == targetId)
+            res.add("instance");
+        return res;
+    }
+
 
 }

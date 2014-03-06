@@ -1,9 +1,7 @@
 package org.shelmet.heap.server
 
-import org.shelmet.heap.model._
 import org.shelmet.heap.util.Misc
 import java.io.PrintWriter
-import org.shelmet.heap.HeapId
 import org.eclipse.mat.snapshot.model._
 import org.eclipse.mat.snapshot.ISnapshot
 import org.eclipse.mat.SnapshotException
@@ -135,18 +133,18 @@ abstract class AbstractPage(snapshot : ISnapshot) {
                   |                <a href="#" class="dropdown-toggle" data-toggle="dropdown">Reports<b class="caret"></b></a>
                   |                <ul class="dropdown-menu">
                   |                  <li class="nav-header">Classes</li>
-                  |                  <li><a href="/allClassesWithPlatform/">Including platform</a></li>
-                  |                  <li><a href="/allClassesWithoutPlatform/">Excluding platform</a></li>
+                  |                  <li><a href="/allClassesWithPlatform">Including platform</a></li>
+                  |                  <li><a href="/allClassesWithoutPlatform">Excluding platform</a></li>
                   |                  <li class="divider"></li>
                   |                  <li><a href="/rootSet">RootSet</a></li>
                   |                  <li class="divider"></li>
                   |                  <li class="nav-header">Instance Counts</li>
-                  |                  <li><a href="/showInstanceCountsIncPlatform/">Including platform</a></li>
-                  |                  <li><a href="/showInstanceCountsExcPlatform/">Excluding platform</a></li>
+                  |                  <li><a href="/showInstanceCountsIncPlatform">Including platform</a></li>
+                  |                  <li><a href="/showInstanceCountsExcPlatform">Excluding platform</a></li>
                   |                  <li class="divider"></li>
-                  |                  <li><a href="/histogram/">Heap histogram</a></li>
+                  |                  <li><a href="/histogram">Heap histogram</a></li>
                   |                  <li class="divider"></li>
-                  |                  <li><a href="/finalizerSummary/">Finalizer summary</a></li>
+                  |                  <li><a href="/finalizerSummary">Finalizer summary</a></li>
                   |                </ul>
                   |              </li>
                   |              <li><a href="/about">About</a></li>
@@ -184,10 +182,6 @@ abstract class AbstractPage(snapshot : ISnapshot) {
     printAnchor("object/" + hexString(addr),content)
   }
 
-  protected def printThingAnchorTag(id: HeapId,content : String) {
-    printThingAnchorTag(id.id,content)
-  }
-
   protected def printThing(thing: Any) {
     if (thing == null) {
       printEncoded("<null>")
@@ -196,9 +190,6 @@ abstract class AbstractPage(snapshot : ISnapshot) {
     thing match {
       case io : IObject =>
         printThingAnchorTag(io.getObjectAddress,io.getDisplayName + " (" + io.getUsedHeapSize + " bytes)")
-      case ho: JavaHeapObject =>
-        val obj = snapshot.getObject(snapshot.mapAddressToId(ho.heapId.id))
-        printThing(obj)
       case or : ObjectReference =>
         try {
         val obj = snapshot.getObject(or.getObjectId)
@@ -227,21 +218,12 @@ abstract class AbstractPage(snapshot : ISnapshot) {
       printEncoded(root.getTypeString)
   }
 
-  protected def printClass(clazz: JavaClass) {
-    if (clazz != null)
-      printAnchor("object/"+encodeForURL(clazz),clazz.toString)
-    else
-      out.println("null")
-  }
-
   protected def printClass(clazz: IClass) {
     if (clazz != null)
       printAnchor("object/"+encodeForURL(clazz),clazz.getNewDisplayName)
     else
       out.println("null")
   }
-
-  protected def encodeForURL(clazz: JavaClass): String = clazz.getIdString
 
   protected def encodeForURL(clazz: IClass): String = Misc.toHex(clazz.getObjectAddress)
 

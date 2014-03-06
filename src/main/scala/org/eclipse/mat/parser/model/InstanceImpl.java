@@ -206,4 +206,26 @@ public class InstanceImpl extends AbstractObjectImpl implements IInstance {
         return name2field.get(name);
     }
 
+
+    @Override
+    public List<String> describeReferenceTo(IObject other) throws SnapshotException {
+        int targetId = other.getObjectId();
+        List<String> res = new ArrayList<>();
+
+        for(Field f  : getFields()) {
+            if(f.getType() == Type.OBJECT) {
+                Object value = f.getValue();
+                try {
+                    if(value != null && (((ObjectReference) value).getObjectId() == targetId))
+                        res.add("field " + f.getName());
+                } catch(SnapshotException se) {
+                    // Do nothing - dead ref
+                }
+            }
+        }
+
+        if(getClassId() == targetId)
+            res.add("instance");
+        return res;
+    }
 }

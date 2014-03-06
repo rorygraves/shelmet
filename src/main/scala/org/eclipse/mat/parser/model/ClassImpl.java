@@ -223,6 +223,30 @@ public class ClassImpl extends AbstractObjectImpl implements IClass, Comparable<
         return answer;
     }
 
+    @Override
+    public List<String> describeReferenceTo(IObject other) throws SnapshotException {
+        int targetId = other.getObjectId();
+        List<String> res = new ArrayList<>();
+
+        for(Field f  : staticFields) {
+            if(f.getType() == Type.OBJECT) {
+                Object value = f.getValue();
+                if(value != null && (((ObjectReference) value).getObjectId() == targetId))
+                    res.add("static field " + f.getName());
+            }
+        }
+
+        if(superClassId == targetId)
+            res.add("subclass");
+
+        if(classLoaderId == targetId)
+            res.add("classloader for");
+
+        if(getClassId() == targetId)
+            res.add("instance");
+        return res;
+    }
+
     public long getClassLoaderAddress() {
         return classLoaderAddress;
     }
@@ -235,9 +259,9 @@ public class ClassImpl extends AbstractObjectImpl implements IClass, Comparable<
         return classLoaderId;
     }
 
-    public ClassImpl getClassLoader() {
+    public IObject getClassLoader() {
         try {
-            return classLoaderAddress != 0 ? (ClassImpl) this.source.getObject(classLoaderId) : null;
+            return classLoaderAddress != 0 ? (IObject) this.source.getObject(classLoaderId) : null;
         } catch (SnapshotException e) {
             throw new RuntimeException(e);
         }

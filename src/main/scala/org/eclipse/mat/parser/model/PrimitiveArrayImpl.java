@@ -147,4 +147,13 @@ public class PrimitiveArrayImpl extends AbstractArrayImpl implements IPrimitiveA
         return alignUpTo8(2 * clazz.getHeapSizePerInstance() + 4 + length * (long) ELEMENT_SIZE[type]);
     }
 
+    @Override
+    public List<String> describeReferenceTo(IObject other) throws SnapshotException {
+        int targetId = other.getObjectId();
+        List<String> res = new ArrayList<>();
+
+        if(getClassId() == targetId)
+            res.add("instance");
+        return res;
+    }
 }

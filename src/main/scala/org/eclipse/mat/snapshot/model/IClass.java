@@ -57,7 +57,7 @@ public interface IClass extends IObject {
      */
     public int getClassLoaderId();
 
-    public IClass getClassLoader();
+    public IObject getClassLoader();
     /**
      * Returns the address of the class loader which loaded this class.
      */

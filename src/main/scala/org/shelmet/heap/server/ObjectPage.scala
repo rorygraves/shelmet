@@ -1,11 +1,11 @@
 package org.shelmet.heap.server
 
-import org.shelmet.heap.model._
 import org.eclipse.mat.snapshot.ISnapshot
 import org.eclipse.mat.snapshot.model._
-import org.shelmet.heap.HeapId
+import org.eclipse.mat.SnapshotException
+import org.shelmet.heap.util.Misc
 
-class ObjectPage(oldSnapshot : Snapshot,snapshot : ISnapshot,query : String) extends AbstractPage(snapshot) {
+class ObjectPage(snapshot : ISnapshot,query : String) extends AbstractPage(snapshot) {
 
   override def run() {
     findObjectByQuery(query) match {
@@ -47,7 +47,7 @@ class ObjectPage(oldSnapshot : Snapshot,snapshot : ISnapshot,query : String) ext
         }
         tableRow {
           tableData { out.println("<b>ClassLoader:</b>") }
-          tableData { printClass(clazz.getClassLoader) }
+          tableData { printThing(clazz.getClassLoader) }
         }
         // TODO Not support by MAT
 //        tableRow {
@@ -204,8 +204,13 @@ class ObjectPage(oldSnapshot : Snapshot,snapshot : ISnapshot,query : String) ext
           if(itemRef == 0)
             print("<null>")
           else {
-            val id = snapshot.mapAddressToId(itemRef)
-            printThing(snapshot.getObject(id))
+            try {
+              val id = snapshot.mapAddressToId(itemRef)
+              printThing(snapshot.getObject(id))
+            } catch {
+              case se : SnapshotException =>
+                out.println("BROKEN REF - " + Misc.toHex(itemRef))
+            }
           }
           out.println("<br/>")
         }
@@ -271,18 +276,19 @@ class ObjectPage(oldSnapshot : Snapshot,snapshot : ISnapshot,query : String) ext
     // general footer
     outputRootRefs(rootRefs)
 
-
-    val oldObj = oldSnapshot.findHeapObject(HeapId(obj.getObjectAddress)).get
-
     h2("References to this object:")
     pageAnchor("refers")
     referIds.foreach {
       refId =>
-        val referer = snapshot.getObject(refId)
-        printThing(referer)
-        val oldRef = oldSnapshot.findHeapObject(HeapId(referer.getObjectAddress)).get
-        printEncoded(" : " + oldRef.describeReferenceTo(oldObj).mkString("/"))
-
+        try {
+          val referer = snapshot.getObject(refId)
+          printThing(referer)
+          import scala.collection.JavaConversions._
+          printEncoded(" : " + referer.describeReferenceTo(obj).mkString("/"))
+        } catch {
+          case se : SnapshotException =>
+            out.println("BROKEN REF - " + Misc.toHex(refId))
+        }
         out.println("<br/>")
     }
 

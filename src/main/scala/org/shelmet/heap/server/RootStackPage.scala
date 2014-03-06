@@ -1,13 +1,12 @@
 package org.shelmet.heap.server
 
-import org.shelmet.heap.model.Snapshot
 import org.eclipse.mat.snapshot.ISnapshot
 import org.eclipse.mat.snapshot.model.{GCRootInfo, IObject}
 
 /**
  * Query to show the StackTrace for a given root
  */
-class RootStackPage(oldSnapshot : Snapshot,snapshot : ISnapshot,query : String) extends AbstractPage(snapshot) {
+class RootStackPage(snapshot : ISnapshot,query : String) extends AbstractPage(snapshot) {
 
   override def run() {
     query.split(":").toList match {

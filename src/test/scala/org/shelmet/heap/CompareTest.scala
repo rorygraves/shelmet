@@ -88,11 +88,11 @@ class CompareTest extends FunSuite with Logging with BeforeAndAfterAll {
   }
 
   test("Render AllClassesWithoutPlatform page") {
-    testPage("allClassesWithoutPlatform","http://localhost:8080/allClassesWithoutPlatform/")
+    testPage("allClassesWithoutPlatform","http://localhost:8080/allClassesWithoutPlatform")
   }
 
   test("Render AllClassesWithPlatform page") {
-    testPage("allClassesWithPlatform","http://localhost:8080/allClassesWithPlatform/")
+    testPage("allClassesWithPlatform","http://localhost:8080/allClassesWithPlatform")
   }
 
   test("Render RootSet page") {

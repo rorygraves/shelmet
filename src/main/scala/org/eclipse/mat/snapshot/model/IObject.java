@@ -158,4 +158,6 @@ public interface IObject extends Serializable {
      * @return the snapshot from which this object has been read.
      */
     public ISnapshot getSnapshot();
+
+    public List<String> describeReferenceTo(IObject other) throws SnapshotException;
 }

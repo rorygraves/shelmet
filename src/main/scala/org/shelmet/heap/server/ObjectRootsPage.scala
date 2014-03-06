@@ -1,9 +1,5 @@
 package org.shelmet.heap.server
 
-import org.shelmet.heap.model._
-import org.shelmet.heap.util.SortUtil
-import org.shelmet.heap.HeapId
-import scala.Some
 import org.eclipse.mat.snapshot.ISnapshot
 
 class ObjectRootsPage(snapshot : ISnapshot,query : String,includeWeak: Boolean) extends AbstractPage(snapshot) {
