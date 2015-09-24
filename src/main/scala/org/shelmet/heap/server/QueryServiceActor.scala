@@ -17,7 +17,7 @@ class QueryServiceActor(val snapshot: Snapshot) extends Actor with QueryService 
 // this trait defines our service behavior independently from the service actor
 trait QueryService extends HttpService {
 
-  val log : LoggingAdapter
+  def log : LoggingAdapter
   val snapshot: Snapshot
 
   val queryRoute = {

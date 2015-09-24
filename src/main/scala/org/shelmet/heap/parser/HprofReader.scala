@@ -1,19 +1,18 @@
 package org.shelmet.heap.parser
 
+import akka.event.slf4j.SLF4JLogging
 import org.shelmet.heap.util.Misc
 import java.io._
 import ArrayTypeCodes._
 import scala.collection.mutable.ListBuffer
-import com.typesafe.scalalogging.slf4j.Logging
 import java.util.Date
 import org.shelmet.heap.shared._
-import scala.Some
 import org.shelmet.heap.HeapId
 
 /**
  * Object that's used to read a hprof file.
  */
-object HprofReader extends Logging {
+object HprofReader extends SLF4JLogging {
   val MAGIC_NUMBER: Int = 0x4a415641
 
   private val VERSION_1_0_1 = "PROFILE 1.0.1"
@@ -73,7 +72,7 @@ object HprofReader extends Logging {
 }
 
 //***************************************************************************************************************
-class HprofReader(fileName: String) extends Logging {
+class HprofReader(fileName: String) extends SLF4JLogging {
   import HprofReader._
   /**
    * It seems the HPROF spec only allows 4 bytes for record length, so a
@@ -95,7 +94,7 @@ class HprofReader(fileName: String) extends Logging {
       val bytesLeft: Long = fileSize - curPos - 9
       if (bytesLeft >= MAX_UNSIGNED_4BYTE_INT) {
         if ((bytesLeft - length) % MAX_UNSIGNED_4BYTE_INT == 0) {
-          logger.warn("LENGTH OVERFLOW adjustment")
+          log.warn("LENGTH OVERFLOW adjustment")
           res = bytesLeft
         }
       }
@@ -103,10 +102,10 @@ class HprofReader(fileName: String) extends Logging {
     res
   }
 
-  def readFile(dumpVisitor : DumpVisitor) {
+  def readFile(dumpVisitor : DumpVisitor, skipFields: Boolean, skipPrimitiveArrays: Boolean) {
 
     val file = new File(fileName)
-    val in = PositionDataInputStream(new BufferedInputStream(new FileInputStream(file)))
+    val in = PositionDataInputStream(new BufferedInputStream(new FileInputStream(file),1048576 * 16))
     try {
       // read the first 4 bytes
       if(in.readInt() != MAGIC_NUMBER)
@@ -129,8 +128,6 @@ class HprofReader(fileName: String) extends Logging {
       val creationDate = new Date(in.readLong)
       dumpVisitor.creationDate(creationDate)
 
-
-
       var curPos: Long = in.position
 
       while (curPos < fileSize) {
@@ -142,11 +139,8 @@ class HprofReader(fileName: String) extends Logging {
 
         val length = updateLengthIfNecessary(fileSize, curPos, itemType, readLength)
 
-
-
-
-
-        logger.debug(s"Read record type $itemType, length $length at position ${Misc.toHex(position)}")
+        if(log.isDebugEnabled)
+          log.debug(s"Read record type $itemType, length $length at position ${Misc.toHex(position)}")
 
         if (length < 0)
           throw new IOException(s"Bad record length of $length at byte ${Misc.toHex(position + 5)} of file.")
@@ -163,9 +157,9 @@ class HprofReader(fileName: String) extends Logging {
             val classNameID = reader.readID
             dumpVisitor.loadClass(classSerialNo,classID,stackTraceSerialNo,classNameID)
           case HPROF_HEAP_DUMP =>
-            readHeapDumpSegment(length,reader,dumpVisitor,identifierSize)
+            readHeapDumpSegment(length,reader,dumpVisitor,identifierSize, skipFields, skipPrimitiveArrays)
           case HPROF_HEAP_DUMP_SEGMENT =>
-            readHeapDumpSegment(length,reader,dumpVisitor,identifierSize)
+            readHeapDumpSegment(length,reader,dumpVisitor,identifierSize, skipFields, skipPrimitiveArrays)
           case HPROF_HEAP_DUMP_END =>
             dumpVisitor.heapDumpEnd()
           case HPROF_STACK_FRAME =>
@@ -202,7 +196,7 @@ class HprofReader(fileName: String) extends Logging {
           case HPROF_LOCKSTATS_HOLD_TIME => reader.skipBytes(length)
           case _ =>
             reader.skipBytes(length)
-            logger.warn(s"Ignoring unrecognized record type $itemType")
+            log.warn(s"Ignoring unrecognized record type $itemType")
         }
 
 
@@ -213,72 +207,89 @@ class HprofReader(fileName: String) extends Logging {
     }
   }
 
-  private def readHeapDumpSegment(segmentLength: Long,reader : DataReader,dumpVisitor : DumpVisitor,identifierSize : Int) {
+  private def readInstance(reader : DataReader,dumpVisitor : DumpVisitor, identifierSize : Int,
+                           skipFields: Boolean, skipPrimitiveArrays: Boolean): Unit = {
+    val id = reader.readHeapId
+    val stackTraceSerialId = reader.readInt
+    val classID = reader.readHeapId
+    val fieldDataBlockSize = reader.readInt
+
+    val fields = if(skipFields) {
+      reader.skipBytes(fieldDataBlockSize)
+      None
+    } else {
+      val rawFieldData = reader.readBytes(fieldDataBlockSize)
+
+      val dataReader = new DataReader(PositionDataInputStream(new ByteArrayInputStream(rawFieldData)),identifierSize)
+
+      // we can only read the fields if the dump visitor is able to supply the class field information
+      // this typically comes from an earlier pass.
+      val fieldSigs = dumpVisitor.getClassFieldInfo(classID)
+      fieldSigs match {
+        case Some(sigs : List[FieldType]) => Some(readInstanceFieldsFields(sigs,dataReader))
+        case None => None
+      }
+    }
+
+    dumpVisitor.instanceDump(id,stackTraceSerialId,classID,fields,fieldDataBlockSize)
+  }
+
+  private def readClass(reader : DataReader,dumpVisitor : DumpVisitor, identifierSize : Int,
+                        skipFields: Boolean, skipPrimitiveArrays: Boolean): Unit = {
+    val id = reader.readHeapId
+    val stackTraceSerialId = reader.readInt
+    val superClassId = reader.readHeapId
+    val classLoaderId = reader.readHeapId
+    val signersId = reader.readHeapId
+    val protDomainId = reader.readHeapId
+    reader.readHeapId // reserved (unused)
+    reader.readHeapId // reserved (unused)
+    val instanceSize  = reader.readInt
+    val numConstPoolEntries = reader.readUnsignedShort
+    val constPoolEntries : Map[Int,Any] = (for (i <- 1 to numConstPoolEntries) yield {
+      val constantPoolIdx = reader.readUnsignedShort
+      val itemType = reader.readByte
+      val value = readValueForType(reader,itemType)
+      (constantPoolIdx,value)
+    })(scala.collection.breakOut)
+
+    val numStatics = reader.readUnsignedShort
+    val staticItems: List[ClassStaticEntry] = (for ( k <- 1 to numStatics) yield {
+      val nameId = reader.readID
+      val itemTypeRaw = reader.readByte
+      val itemType = HprofReader.fieldTypeFromTypeId(itemTypeRaw)
+
+      val value = readValueForType(reader,itemTypeRaw)
+      new ClassStaticEntry(nameId,itemType,value)
+    })(scala.collection.breakOut)
+
+    val numFields: Int = reader.readUnsignedShort
+    val fieldItems = (for (j <- 1 to  numFields) yield {
+      val nameId = reader.readID
+      val itemTypeByte = reader.readByte
+      val itemType = HprofReader.fieldTypeFromTypeId(itemTypeByte)
+      new ClassFieldEntry(nameId,itemType)
+    }).toList
+
+    dumpVisitor.classDump(id,stackTraceSerialId,superClassId,classLoaderId,signersId,protDomainId,instanceSize,
+      constPoolEntries,staticItems,fieldItems)
+  }
+  private def readHeapDumpSegment(segmentLength: Long,reader : DataReader,dumpVisitor : DumpVisitor,
+                                  identifierSize : Int, skipFields: Boolean, skipPrimitiveArrays: Boolean) {
 
     val endPos = reader.position + segmentLength
     while (reader.position < endPos) {
 
       val itemType = reader.readUnsignedByte
 
-      logger.debug(s"    Read heap sub-record type $itemType, at position ${reader.position}")
+      if(log.isDebugEnabled)
+        log.debug(s"    Read heap sub-record type $itemType, at position ${reader.position}")
 
       itemType match {
         case HPROF_GC_INSTANCE_DUMP =>
-          val id = reader.readHeapId
-          val stackTraceSerialId = reader.readInt
-          val classID = reader.readHeapId
-          val fieldDataBlockSize = reader.readInt
-          val rawFieldData = reader.readBytes(fieldDataBlockSize)
-
-          val dataReader = new DataReader(PositionDataInputStream(new ByteArrayInputStream(rawFieldData)),identifierSize)
-
-          // we can only read the fields if the dump visitor is able to supply the class field information
-          // this typically comes from an earlier pass.
-          val fieldSigs = dumpVisitor.getClassFieldInfo(classID)
-          val fields = fieldSigs match {
-            case Some(sigs : List[FieldType]) => Some(readInstanceFieldsFields(sigs,dataReader))
-            case None => None
-          }
-
-          dumpVisitor.instanceDump(id,stackTraceSerialId,classID,fields,fieldDataBlockSize)
+          readInstance(reader, dumpVisitor, identifierSize, skipFields, skipPrimitiveArrays)
         case HPROF_GC_CLASS_DUMP =>
-          val id = reader.readHeapId
-          val stackTraceSerialId = reader.readInt
-          val superClassId = reader.readHeapId
-          val classLoaderId = reader.readHeapId
-          val signersId = reader.readHeapId
-          val protDomainId = reader.readHeapId
-          reader.readHeapId // reserved (unused)
-          reader.readHeapId // reserved (unused)
-          val instanceSize  = reader.readInt
-          val numConstPoolEntries = reader.readUnsignedShort
-          val constPoolEntries : Map[Int,Any] = (for (i <- 1 to numConstPoolEntries) yield {
-            val constantPoolIdx = reader.readUnsignedShort
-            val itemType = reader.readByte
-            val value = readValueForType(reader,itemType)
-            (constantPoolIdx,value)
-          }).toMap
-
-          val numStatics = reader.readUnsignedShort
-          val staticItems = (for ( k <- 1 to numStatics) yield {
-            val nameId = reader.readID
-            val itemTypeRaw = reader.readByte
-            val itemType = HprofReader.fieldTypeFromTypeId(itemTypeRaw)
-
-            val value = readValueForType(reader,itemTypeRaw)
-            new ClassStaticEntry(nameId,itemType,value)
-          }).toList
-
-          val numFields: Int = reader.readUnsignedShort
-          val fieldItems = (for (j <- 1 to  numFields) yield {
-            val nameId = reader.readID
-            val itemTypeByte = reader.readByte
-            val itemType = HprofReader.fieldTypeFromTypeId(itemTypeByte)
-            new ClassFieldEntry(nameId,itemType)
-          }).toList
-
-          dumpVisitor.classDump(id,stackTraceSerialId,superClassId,classLoaderId,signersId,protDomainId,instanceSize,
-            constPoolEntries,staticItems,fieldItems)
+          readClass(reader, dumpVisitor, identifierSize, skipFields, skipPrimitiveArrays)
         case HPROF_GC_ROOT_UNKNOWN =>
           val id = reader.readID
           dumpVisitor.gcRootUnknown(id)
@@ -323,14 +334,13 @@ class HprofReader(fileName: String) extends Logging {
           val elements = for(i <- 1 to numElements) yield HeapId(reader.readID)
           dumpVisitor.objectArrayDump(id,stackTraceSerialId,numElements,elementClassID,elements)
         case HPROF_GC_PRIM_ARRAY_DUMP =>
-          readPrimitiveArray(reader,dumpVisitor)
-        case _ => {
+          readPrimitiveArray(reader,dumpVisitor, skipPrimitiveArrays)
+        case _ =>
           throw new IOException("Unrecognized heap dump sub-record type:  " + itemType)
-        }
       }
     }
 
-    logger.debug("    Finished heap sub-records.")
+    log.debug("    Finished heap sub-records.")
   }
 
   private def readVersionHeader(in : PositionDataInputStream) : Int = {
@@ -376,24 +386,38 @@ class HprofReader(fileName: String) extends Logging {
     signatures.map(readValueForTypeSignature(fieldReader,_)).toVector
   }
 
-  private def readPrimitiveArray(reader : DataReader,dumpVisitor : DumpVisitor) {
+  private def readPrimitiveArray(reader : DataReader,dumpVisitor : DumpVisitor, skipPrimitiveArrays: Boolean) {
     val id = reader.readHeapId
     val stackTraceSerialID = reader.readInt
     val numElements = reader.readInt
 
     val elementClassID : Byte = reader.readByte
-    val fieldType = fieldTypeFromTypeId(elementClassID) match {
+    val fieldType: BaseFieldType = fieldTypeFromTypeId(elementClassID) match {
       case ObjectFieldType =>
         throw new IllegalStateException("Primitive array type cannot object type")
       case t : BaseFieldType => t
     }
 
-    val data = readPrimativeArray(reader,numElements,fieldType)
+    val data = readPrimitiveArray(reader,numElements,fieldType, skipPrimitiveArrays)
 
     dumpVisitor.primitiveArray(id,stackTraceSerialID,fieldType,data)
   }
 
-  def readPrimativeArray(reader : DataReader,numElements : Int,fieldType : FieldType): Seq[AnyVal] = {
+  def readPrimitiveArray(reader : DataReader,numElements : Int,fieldType : BaseFieldType, skipPrimitiveArrays: Boolean): Seq[AnyVal] = {
+    if(skipPrimitiveArrays) {
+      fieldType match {
+        case BooleanFieldType => reader.skipBytes(numElements * 1)
+        case ByteFieldType => reader.skipBytes(numElements * 1)
+        case CharFieldType => reader.skipBytes(numElements * 2)
+        case ShortFieldType => reader.skipBytes(numElements * 2)
+        case IntFieldType => reader.skipBytes(numElements * 4)
+        case LongFieldType => reader.skipBytes(numElements * 8)
+        case FloatFieldType => reader.skipBytes(numElements * 4)
+        case DoubleFieldType => reader.skipBytes(numElements * 8)
+      }
+      Seq.empty
+    }
+    else
     for(i <- 0 until numElements)  yield fieldType match {
       case BooleanFieldType => reader.readBoolean
       case ByteFieldType => reader.readByte
@@ -403,8 +427,6 @@ class HprofReader(fileName: String) extends Logging {
       case LongFieldType => reader.readLong
       case FloatFieldType => reader.readFloat
       case DoubleFieldType => reader.readDouble
-      case _ =>
-        throw new RuntimeException("unknown primitive type?")
     }
   }
 

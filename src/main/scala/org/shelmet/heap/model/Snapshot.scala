@@ -1,12 +1,14 @@
 package org.shelmet.heap.model
 
 import java.lang.ref.SoftReference
+import akka.event.slf4j.SLF4JLogging
+
 import scala.collection.SortedMap
 import scala.collection.mutable.ListBuffer
 import org.shelmet.heap.parser.HprofReader
 import org.shelmet.heap.model.create.{ObjectPassDumpVisitor, InitialPassDumpVisitor}
 import org.shelmet.heap.HeapId
-import com.typesafe.scalalogging.slf4j.Logging
+
 import java.util.Date
 import org.shelmet.heap.shared.BaseFieldType
 import java.io.{PrintStream, FileOutputStream}
@@ -16,7 +18,7 @@ import java.io.{PrintStream, FileOutputStream}
  * This is the top-level "model" object read out of a single .hprof or .bod
  * file.
  */
-object Snapshot extends Logging {
+object Snapshot extends SLF4JLogging {
   val SMALL_ID_MASK: Long = 0x0FFFFFFFFL
   final val EMPTY_BYTE_ARRAY: Array[Byte] = new Array[Byte](0)
   private val DOT_LIMIT: Int = 5000
@@ -24,23 +26,23 @@ object Snapshot extends Logging {
   def readFromDump(hpr : HprofReader,callStack : Boolean,calculateRefs : Boolean) : Snapshot = {
     val snapshot = new Snapshot()
     Snapshot.setInstance(snapshot)
-    logger.info("Resolving structure")
-    val ipdv = new InitialPassDumpVisitor(snapshot,callStack)
-    hpr.readFile(ipdv)
-    logger.info(" found:")
-    logger.info(s"   ${ipdv.classCount} class(es)")
-    logger.info(s"   ${ipdv.objectCount} object(s)")
-    logger.info("Resolving instances")
-    hpr.readFile(new ObjectPassDumpVisitor(snapshot,callStack))
-    logger.info("Parse step complete")
-    logger.info("Snapshot read, resolving...")
+    log.info("Resolving structure")
+    val initialVisitor = new InitialPassDumpVisitor(snapshot, callStack)
+    hpr.readFile(initialVisitor, skipFields = true, skipPrimitiveArrays = true)
+    log.info(" found:")
+    log.info(s"   ${initialVisitor.classCount} class(es)")
+    log.info(s"   ${initialVisitor.objectCount} object(s)")
+    log.info("Resolving instances")
+    hpr.readFile(new ObjectPassDumpVisitor(snapshot,callStack), skipFields = false, skipPrimitiveArrays = true)
+    log.info("Parse step complete")
+    log.info("Snapshot read, resolving...")
     snapshot.resolve(calculateRefs)
-    logger.info("Calculating tree depths.")
+    log.info("Calculating tree depths.")
     snapshot.calculateDepths()
 
-    logger.info("Calculating retained sizes. (may take a while)")
+    log.info("Calculating retained sizes. (may take a while)")
     snapshot.calculateRetainedSizes()
-    logger.info("Snapshot load complete.")
+    log.info("Snapshot load complete.")
     Snapshot.clearInstance()
 //    calcAverageStoredSize(snapshot.allObjects)
     snapshot
@@ -78,7 +80,7 @@ object Snapshot extends Logging {
   def clearInstance() { instanceHolder.set(null)}
 }
 
-class Snapshot extends Logging {
+class Snapshot extends SLF4JLogging {
 
   import Snapshot._
 
@@ -148,7 +150,7 @@ class Snapshot extends Logging {
         incCount()
         val size = obj.size
         val newRefs = rootsetReferencesTo(obj, includeWeak = false)
-        if(!newRefs.isEmpty) {
+        if(newRefs.nonEmpty) {
           val retainingSet = (newRefs.map(_.objectSet).reduce(_.intersect(_))-obj.heapId).map(_.get)
 
           retainingSet.foreach( _.retaining += size )
@@ -208,7 +210,7 @@ class Snapshot extends Logging {
 
   def setSiteTrace(obj: JavaHeapObject, trace: Option[StackTrace]) {
     trace match {
-      case Some(t) if !t.frames.isEmpty =>
+      case Some(t) if t.frames.nonEmpty =>
         siteTraces += (obj.heapId -> t)
       case _ =>
     }
@@ -248,7 +250,7 @@ class Snapshot extends Logging {
    * Called after reading complete, to initialize the structure
    */
   def resolve(calculateRefs: Boolean) {
-    logger.info("Resolving " + heapObjects.size + " objects...")
+    log.info("Resolving " + heapObjects.size + " objects...")
 
     javaLangObjectClass = findClassByName("java.lang.Object").getOrElse(throw new IllegalStateException("No java.lang.Object class"))
 
@@ -277,13 +279,13 @@ class Snapshot extends Logging {
   }
 
   private def calculateReferencesToObjects() {
-    logger.info("Chasing references, expect " + heapObjects.size / DOT_LIMIT + " dots")
+    log.info("Chasing references, expect " + heapObjects.size / DOT_LIMIT + " dots")
     var count: Int = 0
     for (t <- heapObjects.values) {
       t.visitReferencedObjects(_.addReferenceFrom(t))
       count += 1
       if (count % DOT_LIMIT == 0)
-        logger.info(".")
+        log.info(".")
     }
 
     for (r <- roots.values)

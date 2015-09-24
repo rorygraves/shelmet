@@ -1,15 +1,14 @@
 package org.shelmet.heap.model.create
 
+import akka.event.slf4j.SLF4JLogging
 import org.shelmet.heap.parser.DumpVisitor
 import org.shelmet.heap.util.Misc._
-import scala.Some
 import java.io.IOException
 import org.shelmet.heap.model.{StackFrame, StackTrace}
 import org.shelmet.heap.HeapId
-import com.typesafe.scalalogging.slf4j.Logging
 import org.shelmet.heap.shared.InstanceId
 
-class AbstractDumpVisitor(callStack: Boolean) extends DumpVisitor with Logging {
+class AbstractDumpVisitor(callStack: Boolean) extends DumpVisitor with SLF4JLogging {
 
   var names = Map[Long, String]()
   var classNameFromObjectID = Map[HeapId, String]()
@@ -38,7 +37,7 @@ class AbstractDumpVisitor(callStack: Boolean) extends DumpVisitor with Logging {
     names.get(id) match {
       case Some(result) => result
       case None =>
-        logger.info("Name not found at {}",toHex(id))
+        log.info("Name not found at {}",toHex(id))
         "unresolved name " + toHex(id)
     }
   }
@@ -67,7 +66,7 @@ class AbstractDumpVisitor(callStack: Boolean) extends DumpVisitor with Logging {
 
     val result = stackTraces.get(ser)
     if (result == None)
-      logger.warn(s"Stack trace not found for serial # $ser")
+      log.warn(s"Stack trace not found for serial # $ser")
 
     result
   }
@@ -80,7 +79,7 @@ class AbstractDumpVisitor(callStack: Boolean) extends DumpVisitor with Logging {
       val className = classNameFromSerialNo.getOrElse(classSerialId,null)
 
       val adjLineNo = if (lineNumber < StackFrame.LINE_NUMBER_NATIVE) {
-        logger.warn(s"Weird stack frame line number:  $lineNumber")
+        log.warn(s"Weird stack frame line number:  $lineNumber")
         StackFrame.LINE_NUMBER_UNKNOWN
       } else lineNumber
 

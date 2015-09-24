@@ -1,9 +1,9 @@
 package org.shelmet.heap
 
+import akka.event.slf4j.SLF4JLogging
 import org.shelmet.heap.server.SHelmetServer
-import com.typesafe.scalalogging.slf4j.Logging
 
-object Main extends Logging {
+object Main extends SLF4JLogging {
   // TODO Show heapId in showObject display
   // TODO numeric id for classes? (fiddly due to ordering)
   // TODO Planned - Updates to use  /class/<classname>/<#instance> - i.e. similar to JVisualVM to improve links/display
@@ -43,15 +43,15 @@ object Main extends Logging {
         val server = SHelmetServer(config)
         server.start() match {
           case Some(portNum) =>
-            logger.info("Started HTTP server on port " + portNum)
-            logger.info("Server is ready.")
+            log.info("Started HTTP server on port " + portNum)
+            log.info("Server is ready.")
           case None =>
-            logger.error("Failed to start web server, shutting down")
+            log.error("Failed to start web server, shutting down")
             System.exit(1)
         }
       } catch {
         case e: Throwable =>
-          logger.error(s"Failed to parse file ${config.dumpFile}",e)
+          log.error(s"Failed to parse file ${config.dumpFile}",e)
           System.exit(1)
       }
     } getOrElse {

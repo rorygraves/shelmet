@@ -1,8 +1,8 @@
 package org.shelmet.heap
 
-import scala.Predef._
 import java.io.File
-import com.typesafe.scalalogging.slf4j.Logging
+
+import akka.event.slf4j.SLF4JLogging
 
 import scala.concurrent.duration._
 import akka.io.IO
@@ -18,7 +18,7 @@ import scala.util.Random
 import org.scalatest.{FunSuite, BeforeAndAfterAll}
 import org.shelmet.heap.server.SHelmetServer
 
-class CompareTest extends FunSuite with Logging with BeforeAndAfterAll {
+class CompareTest extends FunSuite with SLF4JLogging with BeforeAndAfterAll {
 
   var startTime : Long = 0
 
@@ -29,7 +29,7 @@ class CompareTest extends FunSuite with Logging with BeforeAndAfterAll {
 
     startTime = System.currentTimeMillis()
 
-    logger.info("Initialising server")
+    log.info("Initialising server")
 
     // 0 binds to a free ephemeral report
     server = SHelmetServer(new Config(0,true,true,new File("heap.bin")))
@@ -38,7 +38,7 @@ class CompareTest extends FunSuite with Logging with BeforeAndAfterAll {
       case Some(actualPort) =>
         this.port = actualPort
       case None =>
-        logger.error("Failed to start server")
+        log.error("Failed to start server")
         fail("Unable to start server instance")
     }
   }
@@ -46,7 +46,7 @@ class CompareTest extends FunSuite with Logging with BeforeAndAfterAll {
   override protected def afterAll() {
     server.stop()
     val endTime = System.currentTimeMillis()
-    logger.info("test took = " + (endTime - startTime))
+    log.info("test took = " + (endTime - startTime))
   }
 
   def readExpected(key : String) : String = {
@@ -65,7 +65,7 @@ class CompareTest extends FunSuite with Logging with BeforeAndAfterAll {
 
   def testPage(name : String,url : String) {
     val fixedUrl = url.replace("localhost:8080/",s"localhost:$port/")
-    logger.info("Running: " + name)
+    log.info("Running: " + name)
     implicit val timeout : Timeout = 20.seconds
     implicit val system : ActorSystem = server.system
     val response: Future[HttpResponse] = (IO(Http) ? HttpRequest(GET, Uri(fixedUrl))).mapTo[HttpResponse]

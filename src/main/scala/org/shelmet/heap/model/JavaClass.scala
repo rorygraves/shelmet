@@ -53,11 +53,11 @@ class JavaClass(snapshotV : Snapshot,
       snapshot.getJavaLangClass.addInstance(this)
     }
 
-    getSuperclass.map( _.addSubClass(this))
+    getSuperclass.foreach( _.addSubClass(this))
   }
 
 
-  lazy val instanceRetained : Long = getInstances(false).map(_.retainedSize).sum
+  lazy val instanceRetained : Long = getInstances(includeSubclasses = false).map(_.retainedSize).sum
 
   private var instanceRefs : Set[HeapId] = Set.empty
 
@@ -89,7 +89,7 @@ class JavaClass(snapshotV : Snapshot,
    * @return a count of the instances of this class
    */
   def getInstancesCount(includeSubclasses: Boolean): Int = {
-    if(includeSubclasses == false)
+    if(!includeSubclasses)
       instanceRefs.size
     else
       getInstances(includeSubclasses).size
@@ -176,7 +176,7 @@ class JavaClass(snapshotV : Snapshot,
     getSuperclass.foreach( visit(_) )
     loader.foreach( visit )
     getSigners.foreach( visit )
-    getProtectionDomain.map( visit )
+    getProtectionDomain.foreach( visit )
 
     if(includeStatics)
       for (aStatic <- statics) {
